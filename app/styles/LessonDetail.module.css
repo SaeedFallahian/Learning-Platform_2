@@ -1,0 +1,125 @@
+.container {
+  position: relative;
+  min-height: 100vh;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  overflow: hidden;
+}
+
+.thumbnailBackground {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  filter: blur(8px) opacity(0.8);
+  z-index: -1;
+}
+
+.contentWrapper {
+  position: relative;
+  z-index: 1;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.backLink {
+  display: inline-block;
+  margin-bottom: 1.5rem;
+  color: #4C6EF5;
+  font-weight: 500;
+  font-size: 1rem;
+  transition: color 0.3s ease, transform 0.2s ease;
+}
+
+.backLink:hover {
+  color: #3b82f6;
+  transform: translateX(-5px);
+}
+
+.lessonHeader {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.lessonHeader h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #1F2937;
+  margin-bottom: 1rem;
+}
+
+.lessonContent {
+  background: linear-gradient(145deg, #ffffff, #f0f4f8);
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+}
+
+.lessonContent:hover {
+  transform: translateY(-3px);
+}
+
+.videoWrapper {
+  position: relative;
+  padding-bottom: 56.25%; /* برای نسبت 16:9 */
+  height: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.videoWrapper iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.lessonContent p {
+  font-size: 1.1rem;
+  color: #6B7280;
+  line-height: 1.8;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+
+  .contentWrapper {
+    padding: 1.5rem;
+  }
+
+  .lessonHeader h1 {
+    font-size: 2rem;
+  }
+
+  .lessonContent {
+    padding: 1.5rem;
+  }
+
+  .videoWrapper {
+    padding-bottom: 75%; /* نسبت 4:3 برای موبایل */
+  }
+}
+
+@media (max-width: 480px) {
+  .lessonHeader h1 {
+    font-size: 1.8rem;
+  }
+
+  .backLink {
+    font-size: 0.9rem;
+  }
+}

@@ -1,3 +1,1018 @@
+app\courses\page.tsx
+import Link from 'next/link';
+import { courses } from '../../data/courses';
+import styles from '../styles/Courses.module.css';
+
+export default function Courses() {
+  return (
+    <div className={styles.container}>
+      <h1>Our Courses</h1>
+      <div className={styles.courseGrid}>
+        {courses.map((course) => (
+          <Link href={`/courses/${course.id}`} key={course.id} className={styles.courseCard}>
+            <div className={styles.iconWrapper}>
+              <img src={course.icon} alt={`${course.title} icon`} className={styles.courseIcon} />
+            </div>
+            <img src={course.image} alt={course.title} className={styles.courseImage} />
+            <h2>{course.title}</h2>
+            <p>{course.description}</p>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+app\courses\[courseId]\lessons\[lessonId]\page.tsx
+import { courses } from '@/data/courses';
+import styles from '@/styles/LessonDetail.module.css';
+import Link from 'next/link';
+
+export default function LessonDetail({
+  params,
+}: {
+  params: { courseId: string; lessonId: string };
+}) {
+  const course = courses.find((c) => c.id === params.courseId);
+  const lesson = course?.lessons.find((l) => l.id === params.lessonId);
+
+  if (!course || !lesson) {
+    return <div className={styles.container}>Lesson not found</div>;
+  }
+
+  return (
+    <div className={styles.container}>
+      <Link href={`/courses/${course.id}`} className={styles.backLink}>
+        Back to {course.title}
+      </Link>
+      <div className={styles.lessonHeader}>
+        <img src={lesson.thumbnail} alt={lesson.title} className={styles.lessonImage} />
+        <h1>{lesson.title}</h1>
+      </div>
+      <div className={styles.lessonContent}>
+        <p>{lesson.content}</p>
+        {/* Placeholder برای محتوای چندرسانه‌ای مثل ویدیو */}
+        <div className={styles.videoPlaceholder}>
+          <p>Video content will be displayed here (coming soon).</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+app\courses\[courseId]\page.tsx
+import { courses } from '../../../data/courses';
+import styles from '../../styles/CourseDetail.module.css';
+import Link from 'next/link';
+
+export default function CourseDetail({ params }: { params: { courseId: string } }) {
+  const course = courses.find((c) => c.id === params.courseId);
+
+  if (!course) {
+    return <div className={styles.container}>Course not found</div>;
+  }
+
+  return (
+    <div className={styles.container}>
+      <div className={styles.courseHeader}>
+        <img src={course.icon} alt={`${course.title} icon`} className={styles.courseIcon} />
+        <img src={course.image} alt={course.title} className={styles.courseImage} />
+        <h1>{course.title}</h1>
+        <p>{course.description}</p>
+      </div>
+      <h2>Lessons</h2>
+      <ul className={styles.lessonList}>
+        {course.lessons.map((lesson) => (
+          <li key={lesson.id} className={styles.lessonItem}>
+            <img src={lesson.thumbnail} alt={lesson.title} className={styles.lessonThumbnail} />
+            <div className={styles.lessonContent}>
+              <h3>{lesson.title}</h3>
+              <p>{lesson.content}</p>
+              <Link href={`/courses/${course.id}/lessons/${lesson.id}`} className={styles.lessonLink}>
+                View Lesson
+              </Link>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+app\globals.css
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #F8FAFC;
+  color: #1F2937;
+  line-height: 1.6;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+app\layout.tsx
+import './globals.css';
+import Header from '../components/Header';
+import Footer from '@/components/Footer';
+
+export const metadata = {
+  title: 'EduPlatform',
+  description: 'Learn new skills with our online courses',
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body>
+        <Header />
+        <main>{children}</main>
+        <Footer />
+      </body>
+    </html>
+  );
+}
+
+app\page.module.css
+.page {
+  --gray-rgb: 0, 0, 0;
+  --gray-alpha-200: rgba(var(--gray-rgb), 0.08);
+  --gray-alpha-100: rgba(var(--gray-rgb), 0.05);
+
+  --button-primary-hover: #383838;
+  --button-secondary-hover: #f2f2f2;
+
+  display: grid;
+  grid-template-rows: 20px 1fr 20px;
+  align-items: center;
+  justify-items: center;
+  min-height: 100svh;
+  padding: 80px;
+  gap: 64px;
+  font-family: var(--font-geist-sans);
+}
+
+@media (prefers-color-scheme: dark) {
+  .page {
+    --gray-rgb: 255, 255, 255;
+    --gray-alpha-200: rgba(var(--gray-rgb), 0.145);
+    --gray-alpha-100: rgba(var(--gray-rgb), 0.06);
+
+    --button-primary-hover: #ccc;
+    --button-secondary-hover: #1a1a1a;
+  }
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  grid-row-start: 2;
+}
+
+.main ol {
+  font-family: var(--font-geist-mono);
+  padding-left: 0;
+  margin: 0;
+  font-size: 14px;
+  line-height: 24px;
+  letter-spacing: -0.01em;
+  list-style-position: inside;
+}
+
+.main li:not(:last-of-type) {
+  margin-bottom: 8px;
+}
+
+.main code {
+  font-family: inherit;
+  background: var(--gray-alpha-100);
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.ctas {
+  display: flex;
+  gap: 16px;
+}
+
+.ctas a {
+  appearance: none;
+  border-radius: 128px;
+  height: 48px;
+  padding: 0 20px;
+  border: none;
+  border: 1px solid transparent;
+  transition:
+    background 0.2s,
+    color 0.2s,
+    border-color 0.2s;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 20px;
+  font-weight: 500;
+}
+
+a.primary {
+  background: var(--foreground);
+  color: var(--background);
+  gap: 8px;
+}
+
+a.secondary {
+  border-color: var(--gray-alpha-200);
+  min-width: 158px;
+}
+
+.footer {
+  grid-row-start: 3;
+  display: flex;
+  gap: 24px;
+}
+
+.footer a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.footer img {
+  flex-shrink: 0;
+}
+
+/* Enable hover only on non-touch devices */
+@media (hover: hover) and (pointer: fine) {
+  a.primary:hover {
+    background: var(--button-primary-hover);
+    border-color: transparent;
+  }
+
+  a.secondary:hover {
+    background: var(--button-secondary-hover);
+    border-color: transparent;
+  }
+
+  .footer a:hover {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+}
+
+@media (max-width: 600px) {
+  .page {
+    padding: 32px;
+    padding-bottom: 80px;
+  }
+
+  .main {
+    align-items: center;
+  }
+
+  .main ol {
+    text-align: center;
+  }
+
+  .ctas {
+    flex-direction: column;
+  }
+
+  .ctas a {
+    font-size: 14px;
+    height: 40px;
+    padding: 0 16px;
+  }
+
+  a.secondary {
+    min-width: auto;
+  }
+
+  .footer {
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .logo {
+    filter: invert();
+  }
+}
+
+
+app\page.tsx
+import Link from 'next/link';
+import styles from './styles/Home.module.css';
+
+export default function Home() {
+  return (
+    <div className={styles.container}>
+      <section className={styles.hero}>
+        <h1>Welcome to EduPlatform!</h1>
+        <p>Learn new skills with our diverse online courses.</p>
+        <Link href="/courses" className={styles.ctaButton}>
+          Explore Courses
+        </Link>
+      </section>
+      <section className={styles.coursesPreview}>
+        <h2>Featured Courses</h2>
+        <div className={styles.courseGrid}>
+          <div className={styles.courseCard}>
+            <h3>Course 1</h3>
+            <p>Learn the basics of programming.</p>
+          </div>
+          <div className={styles.courseCard}>
+            <h3>Course 2</h3>
+            <p>Master web development.</p>
+          </div>
+          <div className={styles.courseCard}>
+            <h3>Course 3</h3>
+            <p>Dive into data science.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+app\styles\CourseDetail.module.css
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.courseHeader {
+  text-align: center;
+  margin-bottom: 3rem;
+  position: relative;
+}
+
+.courseIcon {
+  width: 60px;
+  height: 60px;
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  padding: 0.5rem;
+}
+
+.courseImage {
+  width: 100%;
+  max-width: 600px;
+  height: auto;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+}
+
+.courseHeader h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #1F2937;
+  margin-bottom: 1rem;
+}
+
+.courseHeader p {
+  font-size: 1.2rem;
+  color: #6B7280;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.container h2 {
+  font-size: 2rem;
+  font-weight: 600;
+  color: #1F2937;
+  margin-bottom: 1.5rem;
+}
+
+.lessonList {
+  list-style: none;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.lessonItem {
+  background: linear-gradient(145deg, #ffffff, #f0f4f8);
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  display: flex;
+  gap: 1.5rem;
+  transition: transform 0.3s ease;
+}
+
+.lessonItem:hover {
+  transform: translateY(-3px);
+}
+
+.lessonThumbnail {
+  width: 120px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.lessonContent {
+  flex: 1;
+}
+
+.lessonContent h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1F2937;
+  margin-bottom: 0.5rem;
+}
+
+.lessonContent p {
+  font-size: 1rem;
+  color: #6B7280;
+  margin-bottom: 1rem;
+}
+
+.lessonLink {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  background-color: #4C6EF5;
+  color: #ffffff;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: background-color 0.3s ease;
+}
+
+.lessonLink:hover {
+  background-color: #3b82f6;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+
+  .courseHeader h1 {
+    font-size: 2rem;
+  }
+
+  .courseHeader p {
+    font-size: 1rem;
+  }
+
+  .courseImage {
+    max-width: 100%;
+  }
+
+  .lessonItem {
+    flex-direction: column;
+  }
+
+  .lessonThumbnail {
+    width: 100%;
+    height: 120px;
+  }
+}
+
+app\styles\Courses.module.css
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.container h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #1F2937;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.courseGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+}
+
+.courseCard {
+  background: linear-gradient(145deg, #ffffff, #f0f4f8);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  text-decoration: none;
+  color: #1F2937;
+  position: relative;
+}
+
+.courseCard:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+.iconWrapper {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  padding: 0.5rem;
+}
+
+.courseIcon {
+  width: 40px;
+  height: 40px;
+}
+
+.courseImage {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+}
+
+.courseCard h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 1rem;
+}
+
+.courseCard p {
+  font-size: 1rem;
+  color: #6B7280;
+  margin: 0 1rem 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+
+  .container h1 {
+    font-size: 2rem;
+  }
+
+  .courseGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .courseCard {
+    margin: 0 auto;
+    max-width: 350px;
+  }
+}
+
+app\styles\Footer.module.css
+.footer {
+  text-align: center;
+  padding: 1.5rem;
+  background-color: #1F2937;
+  color: #F8FAFC;
+  font-size: 0.9rem;
+}
+
+app\styles\Header.module.css
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 3rem;
+  background-color: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.logo a {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #4C6EF5;
+}
+
+.nav {
+  display: flex;
+  gap: 2rem;
+}
+
+.nav a {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #1F2937;
+  transition: color 0.3s ease, transform 0.2s ease;
+}
+
+.nav a:hover {
+  color: #F472B6;
+  transform: translateY(-2px);
+}
+
+@media (max-width: 768px) {
+  .header {
+    padding: 1rem 1.5rem;
+  }
+
+  .nav {
+    gap: 1rem;
+  }
+
+  .logo a {
+    font-size: 1.5rem;
+  }
+}
+
+app\styles\Home.module.css
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.hero {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: linear-gradient(135deg, #4C6EF5 0%, #F472B6 100%);
+  color: #ffffff;
+  border-radius: 12px;
+  margin-bottom: 3rem;
+}
+
+.hero h1 {
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.hero p {
+  font-size: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.ctaButton {
+  display: inline-block;
+  padding: 0.75rem 2rem;
+  background-color: #ffffff;
+  color: #4C6EF5;
+  font-weight: 600;
+  border-radius: 8px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ctaButton:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.coursesPreview {
+  padding: 2rem 0;
+}
+
+.coursesPreview h2 {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.courseGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.courseCard {
+  background-color: #ffffff;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  text-align: center;
+}
+
+.courseCard:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.courseCard h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.courseCard p {
+  font-size: 1rem;
+  color: #6B7280;
+}
+
+@media (max-width: 768px) {
+  .hero h1 {
+    font-size: 2rem;
+  }
+
+  .hero p {
+    font-size: 1rem;
+  }
+
+  .container {
+    padding: 1rem;
+  }
+}
+
+app\styles\LessonDetail.module.css
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.backLink {
+  display: inline-block;
+  margin-bottom: 1.5rem;
+  color: #4C6EF5;
+  font-weight: 500;
+  font-size: 1rem;
+  transition: color 0.3s ease, transform 0.2s ease;
+}
+
+.backLink:hover {
+  color: #3b82f6;
+  transform: translateX(-5px);
+}
+
+.lessonHeader {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.lessonImage {
+  width: 100%;
+  max-width: 800px;
+  height: auto;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.lessonHeader h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #1F2937;
+  margin-bottom: 0.5rem;
+}
+
+.lessonContent {
+  background: linear-gradient(145deg, #ffffff, #f0f4f8);
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+}
+
+.lessonContent:hover {
+  transform: translateY(-3px);
+}
+
+.lessonContent p {
+  font-size: 1.1rem;
+  color: #6B7280;
+  line-height: 1.8;
+  margin-bottom: 1.5rem;
+}
+
+.videoPlaceholder {
+  background-color: #e5e7eb;
+  padding: 2rem;
+  text-align: center;
+  border-radius: 8px;
+  color: #6B7280;
+  font-style: italic;
+  font-size: 1rem;
+  border: 1px dashed #d1d5db;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+
+  .lessonHeader h1 {
+    font-size: 2rem;
+  }
+
+  .lessonImage {
+    max-width: 100%;
+  }
+
+  .lessonContent {
+    padding: 1.5rem;
+  }
+
+  .videoPlaceholder {
+    padding: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .lessonHeader h1 {
+    font-size: 1.8rem;
+  }
+
+  .backLink {
+    font-size: 0.9rem;
+  }
+}
+
+components\Footer.tsx
+import styles from '../app/styles/Footer.module.css';
+
+export default function Footer() {
+  return (
+    <footer className={styles.footer}>
+      <p>© 2025 EduPlatform. All rights reserved.</p>
+    </footer>
+  );
+}
+
+components\Header.tsx
+import Link from 'next/link';
+import styles from '../app/styles/Header.module.css';
+
+export default function Header() {
+  return (
+    <header className={styles.header}>
+      <div className={styles.logo}>
+        <Link href="/">EduPlatform</Link>
+      </div>
+      <nav className={styles.nav}>
+        <Link href="/">Home</Link>
+        <Link href="/courses">Courses</Link>
+        <Link href="/auth">Sign In / Sign Up</Link>
+      </nav>
+    </header>
+  );
+}
+
+data\courses.ts
+export interface Lesson {
+  id: string;
+  title: string;
+  content: string;
+  thumbnail: string;
+}
+
+export interface Course {
+  id: string;
+  title: string;
+  description: string;
+  image: string;
+  icon: string;
+  lessons: Lesson[];
+}
+
+export const courses: Course[] = [
+  {
+    id: "mathematics",
+    title: "Mathematics",
+    description: "Master the fundamentals of mathematics, from algebra to calculus.",
+    image: "https://images.unsplash.com/photo-1509228627857-449b6e4d0b1e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+    icon: "https://img.icons8.com/ios-filled/50/4C6EF5/calculator.png",
+    lessons: [
+      {
+        id: "algebra",
+        title: "Algebra",
+        content: "Learn about equations, polynomials, and functions in this comprehensive Algebra course.",
+        thumbnail: "https://images.unsplash.com/photo-1611080626919-7cf5a9dbab5b?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+      },
+      {
+        id: "geometry",
+        title: "Geometry",
+        content: "Explore shapes, angles, and spatial reasoning in this engaging Geometry course.",
+        thumbnail: "https://images.unsplash.com/photo-1635070664753-803b3b247e76?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+      },
+      {
+        id: "calculus",
+        title: "Calculus",
+        content: "Understand limits, derivatives, and integrals in this foundational Calculus course.",
+        thumbnail: "https://images.unsplash.com/photo-1611078489932-9b6177f3b3c6?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+      },
+    ],
+  },
+  {
+    id: "physics",
+    title: "Physics",
+    description: "Dive into the laws of the universe, from mechanics to electromagnetism.",
+    image: "https://images.unsplash.com/photo-1636466497217-26a7d7cd6c55?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+    icon: "https://img.icons8.com/ios-filled/50/4C6EF5/planet.png",
+    lessons: [
+      {
+        id: "meMechanic",
+        title: "Mechanics",
+        content: "Study motion, forces, and energy in this Mechanics course.",
+        thumbnail: "https://images.unsplash.com/photo-1628595351029-c2bf175a5903?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+      },
+      {
+        id: "thermodynamics",
+        title: "Thermodynamics",
+        content: "Learn about heat, energy, and entropy in this Thermodynamics course.",
+        thumbnail: "https://images.unsplash.com/photo-1596113183800-288bb8f45e27?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+      },
+    ],
+  },
+  {
+    id: "data-science",
+    title: "Data Science",
+    description: "Learn data analysis, visualization, and machine learning techniques.",
+    image: "https://images.unsplash.com/photo-1551288049-b1f3a2b2e6a1?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+    icon: "https://img.icons8.com/ios-filled/50/4C6EF5/bar-chart.png",
+    lessons: [
+      {
+        id: "python",
+        title: "Python for Data Science",
+        content: "Use Python for data analysis and machine learning in this practical course.",
+        thumbnail: "https://images.unsplash.com/photo-1516321318423-f06f85e756b6?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+      },
+      {
+        id: "visualization",
+        title: "Data Visualization",
+        content: "Create stunning charts and graphs to visualize data effectively.",
+        thumbnail: "https://images.unsplash.com/photo-1551288049-b1f3a2b2e6a1?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+      },
+    ],
+  },
+];
+
+export-code.js
+const fs = require("fs");
+const path = require("path");
+
+const OUTPUT_FILE = "project-code.txt";
+const targetExtensions = [".js", ".jsx", ".ts", ".tsx", ".json", ".css"];
+
+function readFilesRecursively(dir, output = []) {
+  const items = fs.readdirSync(dir);
+
+  items.forEach(item => {
+    const fullPath = path.join(dir, item);
+    const stats = fs.statSync(fullPath);
+
+    if (stats.isDirectory()) {
+      if (item === "node_modules" || item.startsWith(".")) return;
+      readFilesRecursively(fullPath, output);
+    } else {
+      const ext = path.extname(item);
+      if (targetExtensions.includes(ext)) {
+        const content = fs.readFileSync(fullPath, "utf8");
+        const relativePath = path.relative(__dirname, fullPath);
+        output.push(`${relativePath}\n${content}\n`);
+      }
+    }
+  });
+
+  return output;
+}
+
+const result = readFilesRecursively(__dirname);
+fs.writeFileSync(OUTPUT_FILE, result.join("\n"), "utf8");
+
+console.log(`✅ All code exported to ${OUTPUT_FILE}`);
+
+next-env.d.ts
+/// <reference types="next" />
+/// <reference types="next/image-types/global" />
+
+// NOTE: This file should not be edited
+// see https://nextjs.org/docs/app/api-reference/config/typescript for more information.
+
+
+next.config.ts
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  /* config options here */
+};
+
+export default nextConfig;
+
+
+package-lock.json
 {
   "name": "my-learning-platform",
   "version": "0.1.0",
@@ -8,7 +1023,6 @@
       "name": "my-learning-platform",
       "version": "0.1.0",
       "dependencies": {
-        "@clerk/nextjs": "^6.23.1",
         "next": "15.3.4",
         "react": "^19.0.0",
         "react-dom": "^19.0.0"
@@ -18,104 +1032,6 @@
         "@types/react": "^19",
         "@types/react-dom": "^19",
         "typescript": "^5"
-      }
-    },
-    "node_modules/@clerk/backend": {
-      "version": "2.3.0",
-      "resolved": "https://registry.npmjs.org/@clerk/backend/-/backend-2.3.0.tgz",
-      "integrity": "sha512-QkvJOF6nshJ9TkCjdXKY2MDWv29/TefIop350sXMpIrN1fIJIWzdFEnIjd4PCINSySPSctlRybL51Z8G/aTusg==",
-      "license": "MIT",
-      "dependencies": {
-        "@clerk/shared": "^3.10.0",
-        "@clerk/types": "^4.62.0",
-        "cookie": "1.0.2",
-        "snakecase-keys": "8.0.1",
-        "tslib": "2.8.1"
-      },
-      "engines": {
-        "node": ">=18.17.0"
-      }
-    },
-    "node_modules/@clerk/clerk-react": {
-      "version": "5.32.2",
-      "resolved": "https://registry.npmjs.org/@clerk/clerk-react/-/clerk-react-5.32.2.tgz",
-      "integrity": "sha512-Me/mN7FW8QiF1M2yUtDJzQ12O+XEgFNbi82n+VILrPK/ilfufmA2uscqyyUyTmpxybwDHzD/U4Rve7HXwReweg==",
-      "license": "MIT",
-      "dependencies": {
-        "@clerk/shared": "^3.10.0",
-        "@clerk/types": "^4.62.0",
-        "tslib": "2.8.1"
-      },
-      "engines": {
-        "node": ">=18.17.0"
-      },
-      "peerDependencies": {
-        "react": "^18.0.0 || ^19.0.0 || ^19.0.0-0",
-        "react-dom": "^18.0.0 || ^19.0.0 || ^19.0.0-0"
-      }
-    },
-    "node_modules/@clerk/nextjs": {
-      "version": "6.23.1",
-      "resolved": "https://registry.npmjs.org/@clerk/nextjs/-/nextjs-6.23.1.tgz",
-      "integrity": "sha512-/c6FxnFd/m5uKVwbQTW1rJIOYoIHxRTc3MIVBzK7rSzukz23UFVZxeEsOmpQX2RT5hKyt5nlT15aci3bkhsPYw==",
-      "license": "MIT",
-      "dependencies": {
-        "@clerk/backend": "^2.3.0",
-        "@clerk/clerk-react": "^5.32.2",
-        "@clerk/shared": "^3.10.0",
-        "@clerk/types": "^4.62.0",
-        "server-only": "0.0.1",
-        "tslib": "2.8.1"
-      },
-      "engines": {
-        "node": ">=18.17.0"
-      },
-      "peerDependencies": {
-        "next": "^13.5.7 || ^14.2.25 || ^15.2.3",
-        "react": "^18.0.0 || ^19.0.0 || ^19.0.0-0",
-        "react-dom": "^18.0.0 || ^19.0.0 || ^19.0.0-0"
-      }
-    },
-    "node_modules/@clerk/shared": {
-      "version": "3.10.0",
-      "resolved": "https://registry.npmjs.org/@clerk/shared/-/shared-3.10.0.tgz",
-      "integrity": "sha512-3Xljj8v5dszuxzSEnQMQTf5pgfs8i/zzq9Dl744q0LutL5qGwtmk5Ja7G0kN3qQymyYy6OJOVcgnweevjazOPQ==",
-      "hasInstallScript": true,
-      "license": "MIT",
-      "dependencies": {
-        "@clerk/types": "^4.62.0",
-        "dequal": "2.0.3",
-        "glob-to-regexp": "0.4.1",
-        "js-cookie": "3.0.5",
-        "std-env": "^3.9.0",
-        "swr": "^2.3.3"
-      },
-      "engines": {
-        "node": ">=18.17.0"
-      },
-      "peerDependencies": {
-        "react": "^18.0.0 || ^19.0.0 || ^19.0.0-0",
-        "react-dom": "^18.0.0 || ^19.0.0 || ^19.0.0-0"
-      },
-      "peerDependenciesMeta": {
-        "react": {
-          "optional": true
-        },
-        "react-dom": {
-          "optional": true
-        }
-      }
-    },
-    "node_modules/@clerk/types": {
-      "version": "4.62.0",
-      "resolved": "https://registry.npmjs.org/@clerk/types/-/types-4.62.0.tgz",
-      "integrity": "sha512-Ps/8eQHCuv2bZYgTG3+4xgxlltoX91GNf+G5TG/DSSmECgR657qGoasOrLLcMMyE+OZiX57k51oH137Ohhggog==",
-      "license": "MIT",
-      "dependencies": {
-        "csstype": "3.1.3"
-      },
-      "engines": {
-        "node": ">=18.17.0"
       }
     },
     "node_modules/@emnapi/runtime": {
@@ -785,29 +1701,12 @@
         "simple-swizzle": "^0.2.2"
       }
     },
-    "node_modules/cookie": {
-      "version": "1.0.2",
-      "resolved": "https://registry.npmjs.org/cookie/-/cookie-1.0.2.tgz",
-      "integrity": "sha512-9Kr/j4O16ISv8zBBhJoi4bXOYNTkFLOqSL3UDB0njXxCXNezjeyVrJyGOWtgfs/q2km1gwBcfH8q1yEGoMYunA==",
-      "license": "MIT",
-      "engines": {
-        "node": ">=18"
-      }
-    },
     "node_modules/csstype": {
       "version": "3.1.3",
       "resolved": "https://registry.npmjs.org/csstype/-/csstype-3.1.3.tgz",
       "integrity": "sha512-M1uQkMl8rQK/szD0LNhtqxIPLpimGm8sOBwU7lLnCpSbTyY3yeU1Vc7l4KT5zT4s/yOxHH5O7tIuuLOCnLADRw==",
+      "dev": true,
       "license": "MIT"
-    },
-    "node_modules/dequal": {
-      "version": "2.0.3",
-      "resolved": "https://registry.npmjs.org/dequal/-/dequal-2.0.3.tgz",
-      "integrity": "sha512-0je+qPKHEMohvfRTCEo3CrPG6cAzAYgmzKyxRiYSSDkS6eGJdyVJm7WaYA5ECaAD9wLB2T4EEeymA5aFVcYXCA==",
-      "license": "MIT",
-      "engines": {
-        "node": ">=6"
-      }
     },
     "node_modules/detect-libc": {
       "version": "2.0.4",
@@ -819,58 +1718,12 @@
         "node": ">=8"
       }
     },
-    "node_modules/dot-case": {
-      "version": "3.0.4",
-      "resolved": "https://registry.npmjs.org/dot-case/-/dot-case-3.0.4.tgz",
-      "integrity": "sha512-Kv5nKlh6yRrdrGvxeJ2e5y2eRUpkUosIW4A2AS38zwSz27zu7ufDwQPi5Jhs3XAlGNetl3bmnGhQsMtkKJnj3w==",
-      "license": "MIT",
-      "dependencies": {
-        "no-case": "^3.0.4",
-        "tslib": "^2.0.3"
-      }
-    },
-    "node_modules/glob-to-regexp": {
-      "version": "0.4.1",
-      "resolved": "https://registry.npmjs.org/glob-to-regexp/-/glob-to-regexp-0.4.1.tgz",
-      "integrity": "sha512-lkX1HJXwyMcprw/5YUZc2s7DrpAiHB21/V+E1rHUrVNokkvB6bqMzT0VfV6/86ZNabt1k14YOIaT7nDvOX3Iiw==",
-      "license": "BSD-2-Clause"
-    },
     "node_modules/is-arrayish": {
       "version": "0.3.2",
       "resolved": "https://registry.npmjs.org/is-arrayish/-/is-arrayish-0.3.2.tgz",
       "integrity": "sha512-eVRqCvVlZbuw3GrM63ovNSNAeA1K16kaR/LRY/92w0zxQ5/1YzwblUX652i4Xs9RwAGjW9d9y6X88t8OaAJfWQ==",
       "license": "MIT",
       "optional": true
-    },
-    "node_modules/js-cookie": {
-      "version": "3.0.5",
-      "resolved": "https://registry.npmjs.org/js-cookie/-/js-cookie-3.0.5.tgz",
-      "integrity": "sha512-cEiJEAEoIbWfCZYKWhVwFuvPX1gETRYPw6LlaTKoxD3s2AkXzkCjnp6h0V77ozyqj0jakteJ4YqDJT830+lVGw==",
-      "license": "MIT",
-      "engines": {
-        "node": ">=14"
-      }
-    },
-    "node_modules/lower-case": {
-      "version": "2.0.2",
-      "resolved": "https://registry.npmjs.org/lower-case/-/lower-case-2.0.2.tgz",
-      "integrity": "sha512-7fm3l3NAF9WfN6W3JOmf5drwpVqX78JtoGJ3A6W0a6ZnldM41w2fV5D490psKFTpMds8TJse/eHLFFsNHHjHgg==",
-      "license": "MIT",
-      "dependencies": {
-        "tslib": "^2.0.3"
-      }
-    },
-    "node_modules/map-obj": {
-      "version": "4.3.0",
-      "resolved": "https://registry.npmjs.org/map-obj/-/map-obj-4.3.0.tgz",
-      "integrity": "sha512-hdN1wVrZbb29eBGiGjJbeP8JbKjq1urkHJ/LIP/NY48MZ1QVXUsQBV1G1zvYFHn1XE06cwjBsOI2K3Ulnj1YXQ==",
-      "license": "MIT",
-      "engines": {
-        "node": ">=8"
-      },
-      "funding": {
-        "url": "https://github.com/sponsors/sindresorhus"
-      }
     },
     "node_modules/nanoid": {
       "version": "3.3.11",
@@ -942,16 +1795,6 @@
         "sass": {
           "optional": true
         }
-      }
-    },
-    "node_modules/no-case": {
-      "version": "3.0.4",
-      "resolved": "https://registry.npmjs.org/no-case/-/no-case-3.0.4.tgz",
-      "integrity": "sha512-fgAN3jGAh+RoxUGZHTSOLJIqUc2wmoBwGR4tbpNAKmmovFoWq0OdRkb0VkldReO2a2iBT/OEulG9XSUc10r3zg==",
-      "license": "MIT",
-      "dependencies": {
-        "lower-case": "^2.0.2",
-        "tslib": "^2.0.3"
       }
     },
     "node_modules/picocolors": {
@@ -1028,12 +1871,6 @@
         "node": ">=10"
       }
     },
-    "node_modules/server-only": {
-      "version": "0.0.1",
-      "resolved": "https://registry.npmjs.org/server-only/-/server-only-0.0.1.tgz",
-      "integrity": "sha512-qepMx2JxAa5jjfzxG79yPPq+8BuFToHd1hm7kI+Z4zAq1ftQiP7HcxMhDDItrbtwVeLg/cY2JnKnrcFkmiswNA==",
-      "license": "MIT"
-    },
     "node_modules/sharp": {
       "version": "0.34.2",
       "resolved": "https://registry.npmjs.org/sharp/-/sharp-0.34.2.tgz",
@@ -1086,30 +1923,6 @@
         "is-arrayish": "^0.3.1"
       }
     },
-    "node_modules/snake-case": {
-      "version": "3.0.4",
-      "resolved": "https://registry.npmjs.org/snake-case/-/snake-case-3.0.4.tgz",
-      "integrity": "sha512-LAOh4z89bGQvl9pFfNF8V146i7o7/CqFPbqzYgP+yYzDIDeS9HaNFtXABamRW+AQzEVODcvE79ljJ+8a9YSdMg==",
-      "license": "MIT",
-      "dependencies": {
-        "dot-case": "^3.0.4",
-        "tslib": "^2.0.3"
-      }
-    },
-    "node_modules/snakecase-keys": {
-      "version": "8.0.1",
-      "resolved": "https://registry.npmjs.org/snakecase-keys/-/snakecase-keys-8.0.1.tgz",
-      "integrity": "sha512-Sj51kE1zC7zh6TDlNNz0/Jn1n5HiHdoQErxO8jLtnyrkJW/M5PrI7x05uDgY3BO7OUQYKCvmeMurW6BPUdwEOw==",
-      "license": "MIT",
-      "dependencies": {
-        "map-obj": "^4.1.0",
-        "snake-case": "^3.0.4",
-        "type-fest": "^4.15.0"
-      },
-      "engines": {
-        "node": ">=18"
-      }
-    },
     "node_modules/source-map-js": {
       "version": "1.2.1",
       "resolved": "https://registry.npmjs.org/source-map-js/-/source-map-js-1.2.1.tgz",
@@ -1118,12 +1931,6 @@
       "engines": {
         "node": ">=0.10.0"
       }
-    },
-    "node_modules/std-env": {
-      "version": "3.9.0",
-      "resolved": "https://registry.npmjs.org/std-env/-/std-env-3.9.0.tgz",
-      "integrity": "sha512-UGvjygr6F6tpH7o2qyqR6QYpwraIjKSdtzyBdyytFOHmPZY917kwdwLG0RbOjWOnKmnm3PeHjaoLLMie7kPLQw==",
-      "license": "MIT"
     },
     "node_modules/streamsearch": {
       "version": "1.1.0",
@@ -1156,36 +1963,11 @@
         }
       }
     },
-    "node_modules/swr": {
-      "version": "2.3.3",
-      "resolved": "https://registry.npmjs.org/swr/-/swr-2.3.3.tgz",
-      "integrity": "sha512-dshNvs3ExOqtZ6kJBaAsabhPdHyeY4P2cKwRCniDVifBMoG/SVI7tfLWqPXriVspf2Rg4tPzXJTnwaihIeFw2A==",
-      "license": "MIT",
-      "dependencies": {
-        "dequal": "^2.0.3",
-        "use-sync-external-store": "^1.4.0"
-      },
-      "peerDependencies": {
-        "react": "^16.11.0 || ^17.0.0 || ^18.0.0 || ^19.0.0"
-      }
-    },
     "node_modules/tslib": {
       "version": "2.8.1",
       "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.8.1.tgz",
       "integrity": "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==",
       "license": "0BSD"
-    },
-    "node_modules/type-fest": {
-      "version": "4.41.0",
-      "resolved": "https://registry.npmjs.org/type-fest/-/type-fest-4.41.0.tgz",
-      "integrity": "sha512-TeTSQ6H5YHvpqVwBRcnLDCBnDOHWYu7IvGbHT6N8AOymcr9PJGjc1GTtiWZTYg0NCgYwvnYWEkVChQAr9bjfwA==",
-      "license": "(MIT OR CC0-1.0)",
-      "engines": {
-        "node": ">=16"
-      },
-      "funding": {
-        "url": "https://github.com/sponsors/sindresorhus"
-      }
     },
     "node_modules/typescript": {
       "version": "5.8.3",
@@ -1207,15 +1989,62 @@
       "integrity": "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==",
       "dev": true,
       "license": "MIT"
-    },
-    "node_modules/use-sync-external-store": {
-      "version": "1.5.0",
-      "resolved": "https://registry.npmjs.org/use-sync-external-store/-/use-sync-external-store-1.5.0.tgz",
-      "integrity": "sha512-Rb46I4cGGVBmjamjphe8L/UnvJD+uPPtTkNvX5mZgqdbavhI4EbgIWJiIHXJ8bc/i9EQGPRh4DwEURJ552Do0A==",
-      "license": "MIT",
-      "peerDependencies": {
-        "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0"
-      }
     }
   }
 }
+
+
+package.json
+{
+  "name": "my-learning-platform",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "next": "15.3.4"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19"
+  }
+}
+
+
+tsconfig.json
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}
+
