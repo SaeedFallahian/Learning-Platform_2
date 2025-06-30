@@ -1,10 +1,11 @@
 import './globals.css';
 import Header from '../components/Header';
-import Footer from '@/components/Footer';
+import { ClerkProvider } from '@clerk/nextjs';
+import styles from './styles/layout.module.css';
 
 export const metadata = {
   title: 'EduPlatform',
-  description: 'Learn new skills with our online courses',
+  description: 'A simple online learning platform',
 };
 
 export default function RootLayout({
@@ -13,12 +14,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body>
-        <Header />
-        <main>{children}</main>
-        <Footer />
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en">
+        <body>
+          <div className={styles.container}>
+            <Header />
+            <main className={styles.main}>{children}</main>
+          </div>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

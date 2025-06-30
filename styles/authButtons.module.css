@@ -1,0 +1,33 @@
+.authButtons {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.clerkButton {
+  padding: 0.5rem 1rem;
+  background: linear-gradient(90deg, #4C6EF5, #F472B6);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.clerkButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+@media (max-width: 768px) {
+  .authButtons {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .clerkButton {
+    width: 100%;
+    text-align: center;
+  }
+}

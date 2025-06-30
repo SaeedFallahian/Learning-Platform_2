@@ -1,6 +1,7 @@
 import { courses } from '@/data/courses';
 import styles from '../../styles/CourseDetail.module.css';
 import Link from 'next/link';
+import { SignedIn, SignedOut, SignInButton } from '@clerk/nextjs';
 
 export default function CourseDetail({ params }: { params: { courseId: string } }) {
   const course = courses.find((c) => c.id === params.courseId);
@@ -25,9 +26,18 @@ export default function CourseDetail({ params }: { params: { courseId: string } 
             <div className={styles.lessonContent}>
               <h3>{lesson.title}</h3>
               <p>{lesson.content}</p>
-              <Link href={`/courses/${course.id}/lessons/${lesson.id}`} className={styles.lessonLink}>
-                View Lesson
-              </Link>
+              <SignedIn>
+                <Link href={`/courses/${course.id}/lessons/${lesson.id}`} className={styles.lessonLink}>
+                  View Lesson
+                </Link>
+              </SignedIn>
+              <SignedOut>
+                <SignInButton mode="modal">
+                  <button className={styles.disabledLessonLink} disabled>
+                    Sign In to View Lessons
+                  </button>
+                </SignInButton>
+              </SignedOut>
             </div>
           </li>
         ))}
