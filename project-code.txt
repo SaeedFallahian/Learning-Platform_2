@@ -1,59 +1,625 @@
+app\api\courses\route.ts
+import { NextResponse } from 'next/server';
+import db, { connectDB } from '@/lib/surrealdb';
+import { Course } from '@/types';
+
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const limit = parseInt(searchParams.get('limit') || '0') || 0;
+
+    await connectDB();
+
+    let sql = `SELECT * FROM courses ORDER BY created_at DESC`;
+    if (limit > 0) {
+      sql += ` LIMIT ${limit}`;
+    }
+
+    const result = await db.query<Course[]>(sql);
+    let courses: Course[] = [];
+    if (Array.isArray(result)) {
+      courses = Array.isArray(result[0]) ? result[0] : result;
+    } else if (Array.isArray((result[0] as any)?.result)) {
+      courses = (result[0] as { result: Course[] }).result;
+    }
+
+    return NextResponse.json(courses, { status: 200 });
+  } catch (error: any) {
+    console.error('Error fetching courses:', error.message);
+    return NextResponse.json(
+      { error: 'Failed to fetch courses', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+app\api\courses\[courseId]\lessons\route.ts
+
+import { NextResponse } from 'next/server';
+import db, { connectDB } from '@/lib/surrealdb';
+import { Lesson } from '@/types';
+
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ courseId: string }> }
+) {
+  try {
+    const { courseId } = await params;
+    if (!courseId || courseId === 'undefined') {
+      return NextResponse.json({ error: 'Invalid course ID' }, { status: 400 });
+    }
+
+    await connectDB();
+
+    const sql = `SELECT * FROM lessons WHERE course = $courseId ORDER BY created_at ASC`;
+    const result = await db.query<Lesson[]>(sql, { courseId: `courses:${courseId}` });
+    console.log('Raw lessons query result:', result); // لاگ برای دیباگ
+
+    let lessons: Lesson[] = [];
+    if (Array.isArray(result)) {
+      lessons = Array.isArray(result[0]) ? result[0] : result;
+    } else if (Array.isArray((result[0] as any)?.result)) {
+      lessons = (result[0] as { result: Lesson[] }).result;
+    }
+
+    console.log('Processed lessons:', lessons); // لاگ برای دیباگ
+    return NextResponse.json(lessons, { status: 200 });
+  } catch (error: any) {
+    console.error(`Error fetching lessons for course ${courseId}:`, error.message);
+    return NextResponse.json(
+      { error: 'Failed to fetch lessons', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+
+app\api\courses\[courseId]\lessons\[lessonId]\route.ts
+
+import { NextResponse } from 'next/server';
+import db, { connectDB } from '@/lib/surrealdb';
+import { RecordId } from 'surrealdb';
+import { Lesson } from '@/types';
+
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ courseId: string; lessonId: string }> }
+) {
+  try {
+    const { courseId, lessonId } = await params;
+    console.log('Requested courseId:', courseId, 'lessonId:', lessonId); // لاگ برای دیباگ
+
+    if (!courseId || courseId === 'undefined' || !lessonId || lessonId === 'undefined') {
+      return NextResponse.json({ error: 'Course ID and Lesson ID are required' }, { status: 400 });
+    }
+
+    await connectDB();
+    const lessonIdRecord = new RecordId('lessons', lessonId);
+    console.log('Constructed lesson RecordId:', lessonIdRecord.toString()); // لاگ برای دیباگ
+
+    const lesson = await db.select<Lesson>(lessonIdRecord);
+    console.log('Selected lesson:', lesson); // لاگ برای دیباگ
+
+    if (!lesson) {
+      return NextResponse.json({ error: 'Lesson not found' }, { status: 404 });
+    }
+
+    let lessonCourseId: string;
+    if (typeof lesson.course === 'string') {
+      lessonCourseId = lesson.course.includes(':') ? lesson.course.split(':').pop()! : lesson.course;
+    } else if (typeof lesson.course === 'object' && 'id' in lesson.course) {
+      lessonCourseId = lesson.course.id;
+    } else {
+      return NextResponse.json({ error: 'Invalid course reference' }, { status: 500 });
+    }
+
+
+
+    return NextResponse.json(lesson, { status: 200 });
+  } catch (error: any) {
+    console.error('Error fetching lesson:', error.message);
+    return NextResponse.json(
+      { error: 'Failed to fetch lesson', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+
+app\api\courses\[courseId]\route.ts
+import { NextResponse } from 'next/server';
+import db, { connectDB } from '@/lib/surrealdb';
+import { Course } from '@/types';
+
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ courseId: string }> }
+) {
+  try {
+    const { courseId } = await params;
+    if (!courseId || courseId === 'undefined') {
+      return NextResponse.json({ error: 'Invalid course ID' }, { status: 400 });
+    }
+
+    await connectDB();
+
+    const sql = `SELECT * FROM courses WHERE id = $courseId`;
+    const result = await db.query(sql, { courseId: `courses:${courseId}` });
+    console.log('Raw course query result:', result); // لاگ برای دیباگ
+
+    let course: Course | null = null;
+    if (Array.isArray(result) && result[0] && Array.isArray(result[0].result)) {
+      course = result[0].result[0] || null;
+    } else if (Array.isArray(result)) {
+      course = result[0] || null;
+    }
+
+    console.log('Processed course:', course); // لاگ برای دیباگ
+
+    if (!course) {
+      return NextResponse.json({ error: 'Course not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(course, { status: 200 });
+  } catch (error: any) {
+    console.error(`Error fetching course ${courseId}:`, error.message);
+    return NextResponse.json(
+      { error: 'Internal server error', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+app\courses\Courses.module.css
+.container {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: calc(100vh - 80px);
+  background-color: #f5f7fa;
+  font-family: 'Inter', sans-serif;
+}
+
+.title {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.card {
+  background: linear-gradient(145deg, #ffffff, #f8fafc);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+}
+
+.icon {
+  width: 50px;
+  height: 50px;
+  margin-bottom: 1rem;
+}
+
+.image {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.cardTitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.75rem;
+}
+
+.description {
+  font-size: 1rem;
+  color: #4b5563;
+  margin-bottom: 1rem;
+  flex-grow: 1;
+}
+
+.button {
+  background-color: #3b82f6;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.button:hover {
+  background-color: #2563eb;
+  transform: scale(1.05);
+}
+
+.disabledButton {
+  background-color: #a0aec0;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+
+  .title {
+    font-size: 1.75rem;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card {
+    padding: 1rem;
+  }
+}
+
 app\courses\page.tsx
+
+'use client';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { courses } from '../../data/courses';
-import styles from '../styles/Courses.module.css';
+import { SignedIn, SignedOut, SignInButton } from '@clerk/nextjs';
+import styles from './Courses.module.css';
+import { Course } from '@/types';
 
 export default function Courses() {
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchCourses() {
+      try {
+        const response = await fetch('/api/courses', {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        console.log('Fetch response status:', response.status); // لاگ برای دیباگ
+        if (!response.ok) {
+          throw new Error('Failed to fetch courses');
+        }
+        const data = await response.json();
+        console.log('Fetched courses:', data); // لاگ برای دیباگ
+
+        // اطمینان از اینکه داده‌ها آرایه هستند
+        const coursesArray = Array.isArray(data) ? data : [];
+        setCourses(coursesArray);
+      } catch (err: any) {
+        setError(err.message);
+        console.error('Fetch error:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchCourses();
+  }, []);
+
   return (
     <div className={styles.container}>
-      <h1>Our Courses</h1>
-      <div className={styles.courseGrid}>
-        {courses.map((course) => (
-          <Link href={`/courses/${course.id}`} key={course.id} className={styles.courseCard}>
-            <div className={styles.iconWrapper}>
-              <img src={course.icon} alt={`${course.title} icon`} className={styles.courseIcon} />
-            </div>
-            <img src={course.image} alt={course.title} className={styles.courseImage} />
-            <h2>{course.title}</h2>
-            <p>{course.description}</p>
-          </Link>
-        ))}
-      </div>
+      <SignedIn>
+        {loading && <div className={styles.loading}>Loading...</div>}
+        {error && <div className={styles.error}>{error}</div>}
+        {!loading && !error && courses.length === 0 && (
+          <div className={styles.empty}>No courses available.</div>
+        )}
+        {!loading && !error && courses.length > 0 && (
+          <div className={styles.grid}>
+            {courses.map((course) => {
+              // استخراج courseId با مدیریت فرمت‌های مختلف id
+              let courseId = '';
+              if (typeof course.id === 'string') {
+                // حذف هر چیزی قبل از آخرین ':'
+                const parts = course.id.split(':');
+                courseId = parts[parts.length - 1].replace(/⟩$/, ''); // حذف کاراکترهای اضافی
+              } else {
+                courseId = String(course.id);
+              }
+              console.log('Rendering course:', course, 'Extracted courseId:', courseId); // لاگ برای دیباگ
+              return (
+                <Link
+                  href={`/courses/${courseId}`}
+                  key={courseId}
+                  className={styles.card}
+                >
+                  <img
+                    src={course.image}
+                    alt={course.title}
+                    className={styles.courseImage}
+                  />
+                  <div className={styles.cardContent}>
+                    <h2 className={styles.title}>{course.title}</h2>
+                    <p className={styles.description}>{course.description}</p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </SignedIn>
+      <SignedOut>
+        <div className={styles.signInPrompt}>
+          <h2>Please sign in to view courses</h2>
+          <SignInButton mode="modal">
+            <button className={styles.signInButton}>Sign In</button>
+          </SignInButton>
+        </div>
+      </SignedOut>
     </div>
   );
 }
 
+
+app\courses\[courseId]\CourseDetail.module.css
+.container {
+  padding: 2rem;
+  max-width: 1000px;
+  margin: 0 auto;
+  min-height: calc(100vh - 80px);
+  background-color: #f5f7fa;
+  font-family: 'Inter', sans-serif;
+}
+
+.courseHeader {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.courseIcon {
+  width: 60px;
+  height: 60px;
+  margin-bottom: 1rem;
+}
+
+.courseImage {
+  width: 100%;
+  max-height: 200px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 0.75rem;
+}
+
+.description {
+  font-size: 1.1rem;
+  color: #4b5563;
+  margin-bottom: 1rem;
+}
+
+.subtitle {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 1rem;
+}
+
+.lessonList {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.lessonItem {
+  display: flex;
+  background-color: white;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease;
+}
+
+.lessonItem:hover {
+  transform: translateY(-2px);
+}
+
+.lessonThumbnail {
+  width: 120px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-right: 1rem;
+}
+
+.lessonContent {
+  flex: 1;
+}
+
+.lessonTitle {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 0.5rem;
+}
+
+.lessonDescription {
+  font-size: 0.9rem;
+  color: #4a5568;
+  margin-bottom: 0.75rem;
+}
+
+.lessonLink {
+  background-color: #3b82f6;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.lessonLink:hover {
+  background-color: #2563eb;
+  transform: scale(1.05);
+}
+
+.disabledLessonLink {
+  background-color: #a0aec0;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+
+  .courseHeader {
+    padding: 1rem;
+  }
+
+  .title {
+    font-size: 1.75rem;
+  }
+
+  .lessonItem {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .lessonThumbnail {
+    width: 100%;
+    max-width: 200px;
+    margin-right: 0;
+    margin-bottom: 1rem;
+  }
+}
+
 app\courses\[courseId]\lessons\[lessonId]\page.tsx
-import { courses } from '@/data/courses';
-import styles from '@/styles/LessonDetail.module.css';
+'use client';
+
+import { useEffect, useState } from 'react';
+import styles from '../../../../styles/LessonDetail.module.css';
 import Link from 'next/link';
+import { Course, Lesson } from '@/types';
 
 export default function LessonDetail({
   params,
 }: {
-  params: { courseId: string; lessonId: string };
+  params: Promise<{ courseId: string; lessonId: string }>;
 }) {
-  const course = courses.find((c) => c.id === params.courseId);
-  const lesson = course?.lessons.find((l) => l.id === params.lessonId);
+  const [course, setCourse] = useState<Course | null>(null);
+  const [lesson, setLesson] = useState<Lesson | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  if (!course || !lesson) {
-    return <div className={styles.container}>Lesson not found</div>;
-  }
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const { courseId, lessonId } = await params;
+        const courseRes = await fetch(`/api/courses/${courseId}`);
+        if (!courseRes.ok) {
+          const errorData = await courseRes.json();
+          throw new Error(errorData.error || 'Course not found');
+        }
+        const courseData = await courseRes.json();
+        setCourse(courseData);
+
+        const lessonRes = await fetch(`/api/courses/${courseId}/lessons/${lessonId}`);
+        if (!lessonRes.ok) {
+          const errorData = await lessonRes.json();
+          throw new Error(errorData.error || 'Lesson not found');
+        }
+        const lessonData = await lessonRes.json();
+        setLesson(lessonData);
+      } catch (err: any) {
+        setError(err.message);
+        console.error('Fetch error:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, [params]);
+
+  if (loading) return <div className={styles.container}>Loading...</div>;
+  if (error) return <div className={styles.container}>Error: {error}</div>;
+  if (!course || !lesson) return <div className={styles.container}>Lesson or Course not found</div>;
+
+  const courseId = typeof course.id === 'string' 
+    ? course.id.includes(':') 
+      ? course.id.split(':').pop() || course.id // حذف پیشوند course:
+      : course.id
+    : String(course.id);
+
+  const lessonCourseId = typeof lesson.course === 'string' 
+    ? lesson.course.includes(':') 
+      ? lesson.course.split(':').pop() || lesson.course // حذف پیشوند course:
+      : lesson.course
+    : String(lesson.course);
+
+  console.log('Client-side comparison - lessonCourseId:', lessonCourseId, 'courseId:', courseId);
+
 
   return (
     <div className={styles.container}>
-      <Link href={`/courses/${course.id}`} className={styles.backLink}>
-        Back to {course.title}
-      </Link>
-      <div className={styles.lessonHeader}>
-        <img src={lesson.thumbnail} alt={lesson.title} className={styles.lessonImage} />
-        <h1>{lesson.title}</h1>
-      </div>
-      <div className={styles.lessonContent}>
-        <p>{lesson.content}</p>
-        {/* Placeholder برای محتوای چندرسانه‌ای مثل ویدیو */}
-        <div className={styles.videoPlaceholder}>
-          <p>Video content will be displayed here (coming soon).</p>
+      <div className={styles.thumbnailBackground} style={{ backgroundImage: `url(${lesson.thumbnail})` }}></div>
+      <div className={styles.contentWrapper}>
+        <Link href={`/courses/${courseId}`} className={styles.backLink}>
+          Back to {course.title}
+        </Link>
+        <div className={styles.lessonHeader}>
+          <h1 className={styles.title}>{lesson.title}</h1>
+        </div>
+        <div className={styles.lessonContent}>
+          <div className={styles.videoWrapper}>
+            <iframe
+              frameBorder="0"
+              width="100%"
+              height="400px"
+              src={lesson.videoEmbed}
+              allowFullScreen={true}
+              webkitallowfullscreen={true}
+              mozallowfullscreen={true}
+            ></iframe>
+          </div>
+          <p className={styles.content}>{lesson.content}</p>
         </div>
       </div>
     </div>
@@ -61,43 +627,98 @@ export default function LessonDetail({
 }
 
 app\courses\[courseId]\page.tsx
-import { courses } from '../../../data/courses';
-import styles from '../../styles/CourseDetail.module.css';
+'use client';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { Course, Lesson } from '@/types';
+import styles from './CourseDetail.module.css'; // از همون فایل استایل قبلی استفاده می‌کنیم
 
-export default function CourseDetail({ params }: { params: { courseId: string } }) {
-  const course = courses.find((c) => c.id === params.courseId);
+export default function CourseDetail({
+  params,
+}: {
+  params: { courseId: string };
+}) {
+  const courseId = params.courseId;
+  const [course, setCourse] = useState<Course | null>(null);
+  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!course) {
-    return <div className={styles.container}>Course not found</div>;
-  }
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const courseRes = await fetch(`/api/courses/${courseId}`);
+        if (!courseRes.ok) {
+          const errorData = await courseRes.json();
+          throw new Error(errorData.error || 'Course not found');
+        }
+        const courseData = await courseRes.json();
+        setCourse(courseData);
+
+        const lessonsRes = await fetch(`/api/courses/${courseId}/lessons`);
+        const lessonsData = await lessonsRes.json();
+
+        if (!Array.isArray(lessonsData)) {
+          throw new Error('Invalid lessons data');
+        }
+
+        setLessons(lessonsData);
+      } catch (err: any) {
+        console.error('Fetch error:', err);
+        setError(err.message || 'Unknown error');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+  }, [courseId]);
+
+  if (loading) return <div className={styles.container}>Loading...</div>;
+  if (error) return <div className={styles.container}>Error: {error}</div>;
+  if (!course) return <div className={styles.container}>Course not found</div>;
 
   return (
     <div className={styles.container}>
       <div className={styles.courseHeader}>
         <img src={course.icon} alt={`${course.title} icon`} className={styles.courseIcon} />
         <img src={course.image} alt={course.title} className={styles.courseImage} />
-        <h1>{course.title}</h1>
-        <p>{course.description}</p>
+        <h1 className={styles.title}>{course.title}</h1>
+        <p className={styles.description}>{course.description}</p>
       </div>
-      <h2>Lessons</h2>
+      <h2 className={styles.subtitle}>Lessons</h2>
       <ul className={styles.lessonList}>
-        {course.lessons.map((lesson) => (
-          <li key={lesson.id} className={styles.lessonItem}>
-            <img src={lesson.thumbnail} alt={lesson.title} className={styles.lessonThumbnail} />
-            <div className={styles.lessonContent}>
-              <h3>{lesson.title}</h3>
-              <p>{lesson.content}</p>
-              <Link href={`/courses/${course.id}/lessons/${lesson.id}`} className={styles.lessonLink}>
-                View Lesson
-              </Link>
-            </div>
-          </li>
-        ))}
+        {lessons.map((lesson) => {
+          const lessonId = typeof lesson.id === 'string'
+            ? lesson.id.includes(':')
+              ? lesson.id.split(':').pop()?.replace(/[^\w\-]/g, '') || lesson.id
+              : lesson.id
+            : String(lesson.id);
+
+          if (!lessonId) {
+            console.warn('Invalid lesson ID:', lesson.id);
+            return null;
+          }
+
+          return (
+            <li key={String(lesson.id)} className={styles.lessonItem}>
+              <img src={lesson.thumbnail} alt={lesson.title} className={styles.lessonThumbnail} />
+              <div className={styles.lessonContent}>
+                <h3 className={styles.lessonTitle}>{lesson.title}</h3>
+                <p className={styles.lessonDescription}>{lesson.content}</p>
+                <Link href={`/courses/${courseId}/lessons/${lessonId}`} className={styles.lessonLink}>
+                  View Lesson
+                </Link>
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
 }
+
 
 app\globals.css
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -123,11 +744,12 @@ a {
 app\layout.tsx
 import './globals.css';
 import Header from '../components/Header';
-import Footer from '@/components/Footer';
+import { ClerkProvider } from '@clerk/nextjs';
+import styles from './styles/layout.module.css';
 
 export const metadata = {
   title: 'EduPlatform',
-  description: 'Learn new skills with our online courses',
+  description: 'A simple online learning platform',
 };
 
 export default function RootLayout({
@@ -136,13 +758,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body>
-        <Header />
-        <main>{children}</main>
-        <Footer />
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en">
+        <body>
+          <div className={styles.container}>
+            <Header />
+            <main className={styles.main}>{children}</main>
+          </div>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
 
@@ -453,15 +1078,28 @@ app\styles\CourseDetail.module.css
 .lessonLink {
   display: inline-block;
   padding: 0.5rem 1rem;
-  background-color: #4C6EF5;
+  background: linear-gradient(90deg, #4C6EF5, #F472B6);
   color: #ffffff;
   border-radius: 8px;
   font-weight: 500;
-  transition: background-color 0.3s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  text-decoration: none;
 }
 
 .lessonLink:hover {
-  background-color: #3b82f6;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.disabledLessonLink {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  background: #9CA3AF;
+  color: #ffffff;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
 @media (max-width: 768px) {
@@ -493,90 +1131,86 @@ app\styles\CourseDetail.module.css
 
 app\styles\Courses.module.css
 .container {
-  max-width: 1280px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
 }
 
-.container h1 {
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: #1F2937;
-  text-align: center;
-  margin-bottom: 2rem;
-}
-
-.courseGrid {
+.grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 2rem;
 }
 
-.courseCard {
-  background: linear-gradient(145deg, #ffffff, #f0f4f8);
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+.card {
+  background: white;
+  border-radius: 8px;
   overflow: hidden;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
   text-decoration: none;
-  color: #1F2937;
-  position: relative;
+  color: inherit;
 }
 
-.courseCard:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-}
-
-.iconWrapper {
-  position: absolute;
-  top: 1rem;
-  left: 1rem;
-  background-color: rgba(255, 255, 255, 0.9);
-  border-radius: 50%;
-  padding: 0.5rem;
-}
-
-.courseIcon {
-  width: 40px;
-  height: 40px;
+.card:hover {
+  transform: translateY(-5px);
 }
 
 .courseImage {
   width: 100%;
-  height: 200px;
+  height: 150px;
   object-fit: cover;
 }
 
-.courseCard h2 {
+.cardContent {
+  padding: 1rem;
+}
+
+.title {
   font-size: 1.5rem;
-  font-weight: 600;
-  margin: 1rem;
+  margin: 0 0 0.5rem;
 }
 
-.courseCard p {
+.description {
   font-size: 1rem;
-  color: #6B7280;
-  margin: 0 1rem 1.5rem;
+  color: #666;
 }
 
-@media (max-width: 768px) {
-  .container {
-    padding: 1rem;
-  }
+.loading,
+.error,
+.empty {
+  text-align: center;
+  font-size: 1.2rem;
+  margin: 2rem 0;
+}
 
-  .container h1 {
-    font-size: 2rem;
-  }
+.error {
+  color: #e74c3c;
+}
 
-  .courseGrid {
-    grid-template-columns: 1fr;
-  }
+.signInPrompt {
+  text-align: center;
+  margin: 2rem 0;
+}
 
-  .courseCard {
-    margin: 0 auto;
-    max-width: 350px;
-  }
+.signInPrompt h2 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.signInButton {
+  background-color: #4C6EF5;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.signInButton:hover {
+  background-color: #3b5bdb;
 }
 
 app\styles\Footer.module.css
@@ -590,51 +1224,106 @@ app\styles\Footer.module.css
 
 app\styles\Header.module.css
 .header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem 3rem;
   background-color: #ffffff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   position: sticky;
   top: 0;
   z-index: 1000;
+  transition: background-color 0.3s ease;
 }
 
-.logo a {
-  font-size: 1.8rem;
-  font-weight: 700;
-  color: #4C6EF5;
+.header.scrolled {
+  background-color: rgba(255, 255, 255, 0.95);
 }
 
 .nav {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1rem 2rem;
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logoContainer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.logoText {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1F2937;
+}
+
+.desktopMenu {
+  display: flex;
+  align-items: center;
   gap: 2rem;
 }
 
-.nav a {
-  font-size: 1rem;
-  font-weight: 500;
-  color: #1F2937;
-  transition: color 0.3s ease, transform 0.2s ease;
+.navList {
+  display: flex;
+  gap: 1.5rem;
+  list-style: none;
 }
 
-.nav a:hover {
-  color: #F472B6;
-  transform: translateY(-2px);
+.navLink {
+  color: #1F2937;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.navLink:hover {
+  color: #4C6EF5;
+}
+
+.mobileMenuButton {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.mobileMenu {
+  display: none;
+}
+
+.mobileMenu.active {
+  display: block;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  background-color: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.mobileMenuContent {
+  padding: 1rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 @media (max-width: 768px) {
-  .header {
-    padding: 1rem 1.5rem;
+  .desktopMenu {
+    display: none;
   }
 
-  .nav {
-    gap: 1rem;
+  .mobileMenuButton {
+    display: block;
   }
 
-  .logo a {
-    font-size: 1.5rem;
+  .mobileMenu.active .navList {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .navLink {
+    font-size: 1.1rem;
   }
 }
 
@@ -736,11 +1425,53 @@ app\styles\Home.module.css
   }
 }
 
+app\styles\layout.module.css
+.container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.main {
+  flex: 1;
+  padding: 2rem;
+}
+
+@media (max-width: 768px) {
+  .main {
+    padding: 1rem;
+  }
+}
+
 app\styles\LessonDetail.module.css
 .container {
+  position: relative;
+  min-height: 100vh;
   max-width: 1280px;
   margin: 0 auto;
   padding: 2rem;
+  overflow: hidden;
+}
+
+.thumbnailBackground {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  filter: blur(8px) opacity(0.8);
+  z-index: -1;
+}
+
+.contentWrapper {
+  position: relative;
+  z-index: 1;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .backLink {
@@ -759,23 +1490,14 @@ app\styles\LessonDetail.module.css
 
 .lessonHeader {
   text-align: center;
-  margin-bottom: 2.5rem;
-}
-
-.lessonImage {
-  width: 100%;
-  max-width: 800px;
-  height: auto;
-  border-radius: 12px;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
 }
 
 .lessonHeader h1 {
   font-size: 2.5rem;
   font-weight: 700;
   color: #1F2937;
-  margin-bottom: 0.5rem;
+  margin-bottom: 1rem;
 }
 
 .lessonContent {
@@ -790,6 +1512,25 @@ app\styles\LessonDetail.module.css
   transform: translateY(-3px);
 }
 
+.videoWrapper {
+  position: relative;
+  padding-bottom: 56.25%; /* برای نسبت 16:9 */
+  height: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.videoWrapper iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
 .lessonContent p {
   font-size: 1.1rem;
   color: #6B7280;
@@ -797,36 +1538,25 @@ app\styles\LessonDetail.module.css
   margin-bottom: 1.5rem;
 }
 
-.videoPlaceholder {
-  background-color: #e5e7eb;
-  padding: 2rem;
-  text-align: center;
-  border-radius: 8px;
-  color: #6B7280;
-  font-style: italic;
-  font-size: 1rem;
-  border: 1px dashed #d1d5db;
-}
-
 @media (max-width: 768px) {
   .container {
     padding: 1rem;
+  }
+
+  .contentWrapper {
+    padding: 1.5rem;
   }
 
   .lessonHeader h1 {
     font-size: 2rem;
   }
 
-  .lessonImage {
-    max-width: 100%;
-  }
-
   .lessonContent {
     padding: 1.5rem;
   }
 
-  .videoPlaceholder {
-    padding: 1.5rem;
+  .videoWrapper {
+    padding-bottom: 75%; /* نسبت 4:3 برای موبایل */
   }
 }
 
@@ -838,6 +1568,46 @@ app\styles\LessonDetail.module.css
   .backLink {
     font-size: 0.9rem;
   }
+}
+
+components\AuthButtons.tsx
+"use client";
+
+import { SignInButton, SignedIn, SignedOut, UserButton, SignUpButton, useUser } from '@clerk/nextjs';
+import Link from 'next/link';
+import styles from '../styles/authButtons.module.css';
+
+export default function AuthButtons() {
+  const { user } = useUser();
+  const isAdmin = user?.publicMetadata?.role === 'admin';
+
+  return (
+    <div className={styles.authButtons}>
+      <SignedIn>
+        <div className={styles.authButtons}>
+          <Link href="/courses">
+            <button className={styles.clerkButton}>Courses</button>
+          </Link>
+          <UserButton afterSignOutUrl="/" />
+          {isAdmin && (
+            <Link href="/admin">
+              <button className={styles.clerkButton}>Admin Panel</button>
+            </Link>
+          )}
+        </div>
+      </SignedIn>
+      <SignedOut>
+        <div className={styles.authButtons}>
+          <SignInButton mode="modal">
+            <button className={styles.clerkButton}>Sign In</button>
+          </SignInButton>
+          <SignUpButton mode="modal">
+            <button className={styles.clerkButton}>Sign Up</button>
+          </SignUpButton>
+        </div>
+      </SignedOut>
+    </div>
+  );
 }
 
 components\Footer.tsx
@@ -852,23 +1622,83 @@ export default function Footer() {
 }
 
 components\Header.tsx
+"use client";
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
+import { Menu, X } from 'lucide-react';
+import AuthButtons from './AuthButtons';
 import styles from '../app/styles/Header.module.css';
 
-export default function Header() {
+const Header: React.FC = () => {
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+
   return (
-    <header className={styles.header}>
-      <div className={styles.logo}>
-        <Link href="/">EduPlatform</Link>
-      </div>
+    <header className={`${styles.header} ${isScrolled ? styles.scrolled : ''}`}>
       <nav className={styles.nav}>
-        <Link href="/">Home</Link>
-        <Link href="/courses">Courses</Link>
-        <Link href="/auth">Sign In / Sign Up</Link>
+        <div className={styles.logoContainer}>
+          <Image src="/logo.png" alt="EduPlatform Logo" width={40} height={40} />
+          <h1 className={styles.logoText}>EduPlatform</h1>
+        </div>
+
+        {/* Desktop Menu */}
+        <div className={styles.desktopMenu}>
+          <ul className={styles.navList}>
+            <li>
+              <Link href="/" className={styles.navLink}>
+                Home
+              </Link>
+            </li>
+            <li>
+              <Link href="/courses" className={styles.navLink}>
+                Courses
+              </Link>
+            </li>
+          </ul>
+          <AuthButtons />
+        </div>
+
+        {/* Mobile Menu Button */}
+        <button className={styles.mobileMenuButton} onClick={toggleMenu}>
+          {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
       </nav>
+
+      {/* Mobile Menu */}
+      <div className={`${styles.mobileMenu} ${isMenuOpen ? styles.active : ''}`}>
+        <div className={styles.mobileMenuContent}>
+          <ul className={styles.navList}>
+            <li>
+              <Link href="/" className={styles.navLink} onClick={toggleMenu}>
+                Home
+              </Link>
+            </li>
+            <li>
+              <Link href="/courses" className={styles.navLink} onClick={toggleMenu}>
+                Courses
+              </Link>
+            </li>
+          </ul>
+          <AuthButtons />
+        </div>
+      </div>
     </header>
   );
-}
+};
+
+export default Header;
 
 data\courses.ts
 export interface Lesson {
@@ -876,6 +1706,7 @@ export interface Lesson {
   title: string;
   content: string;
   thumbnail: string;
+  videoEmbed: string;
 }
 
 export interface Course {
@@ -900,18 +1731,21 @@ export const courses: Course[] = [
         title: "Algebra",
         content: "Learn about equations, polynomials, and functions in this comprehensive Algebra course.",
         thumbnail: "https://images.unsplash.com/photo-1611080626919-7cf5a9dbab5b?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+        videoEmbed: "https://www.aparat.com/video/video/embed/videohash/q65e4zl/vt/frame",
       },
       {
         id: "geometry",
         title: "Geometry",
         content: "Explore shapes, angles, and spatial reasoning in this engaging Geometry course.",
         thumbnail: "https://images.unsplash.com/photo-1635070664753-803b3b247e76?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+        videoEmbed: "https://www.aparat.com/video/video/embed/videohash/q65e4zl/vt/frame",
       },
       {
         id: "calculus",
         title: "Calculus",
         content: "Understand limits, derivatives, and integrals in this foundational Calculus course.",
         thumbnail: "https://images.unsplash.com/photo-1611078489932-9b6177f3b3c6?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+        videoEmbed: "https://www.aparat.com/video/video/embed/videohash/q65e4zl/vt/frame",
       },
     ],
   },
@@ -923,16 +1757,18 @@ export const courses: Course[] = [
     icon: "https://img.icons8.com/ios-filled/50/4C6EF5/planet.png",
     lessons: [
       {
-        id: "meMechanic",
+        id: "mechanics",
         title: "Mechanics",
         content: "Study motion, forces, and energy in this Mechanics course.",
         thumbnail: "https://images.unsplash.com/photo-1628595351029-c2bf175a5903?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+        videoEmbed: "https://www.aparat.com/video/video/embed/videohash/q65e4zl/vt/frame",
       },
       {
-        id: "thermodynamics",
+        id: "therkingdomics",
         title: "Thermodynamics",
         content: "Learn about heat, energy, and entropy in this Thermodynamics course.",
         thumbnail: "https://images.unsplash.com/photo-1596113183800-288bb8f45e27?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+        videoEmbed: "https://www.aparat.com/video/video/embed/videohash/q65e4zl/vt/frame",
       },
     ],
   },
@@ -940,7 +1776,7 @@ export const courses: Course[] = [
     id: "data-science",
     title: "Data Science",
     description: "Learn data analysis, visualization, and machine learning techniques.",
-    image: "https://images.unsplash.com/photo-1551288049-b1f3a2b2e6a1?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+  image: "https://images.unsplash.com/photo-1551288049-b1f3a2b2e6a1?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
     icon: "https://img.icons8.com/ios-filled/50/4C6EF5/bar-chart.png",
     lessons: [
       {
@@ -948,12 +1784,14 @@ export const courses: Course[] = [
         title: "Python for Data Science",
         content: "Use Python for data analysis and machine learning in this practical course.",
         thumbnail: "https://images.unsplash.com/photo-1516321318423-f06f85e756b6?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+        videoEmbed: "https://www.aparat.com/video/video/embed/videohash/q65e4zl/vt/frame",
       },
       {
         id: "visualization",
         title: "Data Visualization",
         content: "Create stunning charts and graphs to visualize data effectively.",
         thumbnail: "https://images.unsplash.com/photo-1551288049-b1f3a2b2e6a1?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+        videoEmbed: "https://www.aparat.com/video/video/embed/videohash/q65e4zl/vt/frame",
       },
     ],
   },
@@ -994,6 +1832,55 @@ fs.writeFileSync(OUTPUT_FILE, result.join("\n"), "utf8");
 
 console.log(`✅ All code exported to ${OUTPUT_FILE}`);
 
+lib\surrealdb.ts
+import { Surreal } from 'surrealdb';
+
+const db = new Surreal();
+let isConnected = false;
+
+export const connectDB = async () => {
+  if (isConnected) return;
+  try {
+    await db.connect('ws://127.0.0.1:8000', {
+      namespace: "test",
+      database: "test",
+      auth: {
+        username: "root",
+        password: "root",
+      }
+    });
+    isConnected = true;
+    console.log('Connect Shodid');
+  } catch (error) {
+    console.log('Connect Nashodid', error);
+  }
+};
+
+export default db;
+
+middleware.ts
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+
+// مسیرهای خصوصی که نیاز به لاگین دارن
+const isPrivateRoute = createRouteMatcher([
+  "/courses/(.*)/lessons/(.*)",
+]);
+
+export default clerkMiddleware(async (auth, request) => {
+  if (isPrivateRoute(request)) {
+    await auth.protect();
+  }
+});
+
+export const config = {
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    // Always run for API routes
+    "/(api|trpc)(.*)",
+  ],
+};
+
 next-env.d.ts
 /// <reference types="next" />
 /// <reference types="next/image-types/global" />
@@ -1023,15 +1910,116 @@ package-lock.json
       "name": "my-learning-platform",
       "version": "0.1.0",
       "dependencies": {
+        "@clerk/nextjs": "^6.23.1",
+        "lucide-react": "^0.525.0",
         "next": "15.3.4",
         "react": "^19.0.0",
-        "react-dom": "^19.0.0"
+        "react-dom": "^19.0.0",
+        "surrealdb": "^1.3.2"
       },
       "devDependencies": {
         "@types/node": "^20",
         "@types/react": "^19",
         "@types/react-dom": "^19",
         "typescript": "^5"
+      }
+    },
+    "node_modules/@clerk/backend": {
+      "version": "2.3.0",
+      "resolved": "https://registry.npmjs.org/@clerk/backend/-/backend-2.3.0.tgz",
+      "integrity": "sha512-QkvJOF6nshJ9TkCjdXKY2MDWv29/TefIop350sXMpIrN1fIJIWzdFEnIjd4PCINSySPSctlRybL51Z8G/aTusg==",
+      "license": "MIT",
+      "dependencies": {
+        "@clerk/shared": "^3.10.0",
+        "@clerk/types": "^4.62.0",
+        "cookie": "1.0.2",
+        "snakecase-keys": "8.0.1",
+        "tslib": "2.8.1"
+      },
+      "engines": {
+        "node": ">=18.17.0"
+      }
+    },
+    "node_modules/@clerk/clerk-react": {
+      "version": "5.32.2",
+      "resolved": "https://registry.npmjs.org/@clerk/clerk-react/-/clerk-react-5.32.2.tgz",
+      "integrity": "sha512-Me/mN7FW8QiF1M2yUtDJzQ12O+XEgFNbi82n+VILrPK/ilfufmA2uscqyyUyTmpxybwDHzD/U4Rve7HXwReweg==",
+      "license": "MIT",
+      "dependencies": {
+        "@clerk/shared": "^3.10.0",
+        "@clerk/types": "^4.62.0",
+        "tslib": "2.8.1"
+      },
+      "engines": {
+        "node": ">=18.17.0"
+      },
+      "peerDependencies": {
+        "react": "^18.0.0 || ^19.0.0 || ^19.0.0-0",
+        "react-dom": "^18.0.0 || ^19.0.0 || ^19.0.0-0"
+      }
+    },
+    "node_modules/@clerk/nextjs": {
+      "version": "6.23.1",
+      "resolved": "https://registry.npmjs.org/@clerk/nextjs/-/nextjs-6.23.1.tgz",
+      "integrity": "sha512-/c6FxnFd/m5uKVwbQTW1rJIOYoIHxRTc3MIVBzK7rSzukz23UFVZxeEsOmpQX2RT5hKyt5nlT15aci3bkhsPYw==",
+      "license": "MIT",
+      "dependencies": {
+        "@clerk/backend": "^2.3.0",
+        "@clerk/clerk-react": "^5.32.2",
+        "@clerk/shared": "^3.10.0",
+        "@clerk/types": "^4.62.0",
+        "server-only": "0.0.1",
+        "tslib": "2.8.1"
+      },
+      "engines": {
+        "node": ">=18.17.0"
+      },
+      "peerDependencies": {
+        "next": "^13.5.7 || ^14.2.25 || ^15.2.3",
+        "react": "^18.0.0 || ^19.0.0 || ^19.0.0-0",
+        "react-dom": "^18.0.0 || ^19.0.0 || ^19.0.0-0"
+      }
+    },
+    "node_modules/@clerk/shared": {
+      "version": "3.10.0",
+      "resolved": "https://registry.npmjs.org/@clerk/shared/-/shared-3.10.0.tgz",
+      "integrity": "sha512-3Xljj8v5dszuxzSEnQMQTf5pgfs8i/zzq9Dl744q0LutL5qGwtmk5Ja7G0kN3qQymyYy6OJOVcgnweevjazOPQ==",
+      "hasInstallScript": true,
+      "license": "MIT",
+      "dependencies": {
+        "@clerk/types": "^4.62.0",
+        "dequal": "2.0.3",
+        "glob-to-regexp": "0.4.1",
+        "js-cookie": "3.0.5",
+        "std-env": "^3.9.0",
+        "swr": "^2.3.3"
+      },
+      "engines": {
+        "node": ">=18.17.0"
+      },
+      "peerDependencies": {
+        "react": "^18.0.0 || ^19.0.0 || ^19.0.0-0",
+        "react-dom": "^18.0.0 || ^19.0.0 || ^19.0.0-0"
+      },
+      "peerDependenciesMeta": {
+        "react": {
+          "optional": true
+        },
+        "react-dom": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/@clerk/types": {
+      "version": "4.62.0",
+      "resolved": "https://registry.npmjs.org/@clerk/types/-/types-4.62.0.tgz",
+      "integrity": "sha512-Ps/8eQHCuv2bZYgTG3+4xgxlltoX91GNf+G5TG/DSSmECgR657qGoasOrLLcMMyE+OZiX57k51oH137Ohhggog==",
+      "license": "MIT",
+      "dependencies": {
+        "csstype": "3.1.3"
+      },
+      "engines": {
+        "node": ">=18.17.0"
       }
     },
     "node_modules/@emnapi/runtime": {
@@ -1701,12 +2689,29 @@ package-lock.json
         "simple-swizzle": "^0.2.2"
       }
     },
+    "node_modules/cookie": {
+      "version": "1.0.2",
+      "resolved": "https://registry.npmjs.org/cookie/-/cookie-1.0.2.tgz",
+      "integrity": "sha512-9Kr/j4O16ISv8zBBhJoi4bXOYNTkFLOqSL3UDB0njXxCXNezjeyVrJyGOWtgfs/q2km1gwBcfH8q1yEGoMYunA==",
+      "license": "MIT",
+      "engines": {
+        "node": ">=18"
+      }
+    },
     "node_modules/csstype": {
       "version": "3.1.3",
       "resolved": "https://registry.npmjs.org/csstype/-/csstype-3.1.3.tgz",
       "integrity": "sha512-M1uQkMl8rQK/szD0LNhtqxIPLpimGm8sOBwU7lLnCpSbTyY3yeU1Vc7l4KT5zT4s/yOxHH5O7tIuuLOCnLADRw==",
-      "dev": true,
       "license": "MIT"
+    },
+    "node_modules/dequal": {
+      "version": "2.0.3",
+      "resolved": "https://registry.npmjs.org/dequal/-/dequal-2.0.3.tgz",
+      "integrity": "sha512-0je+qPKHEMohvfRTCEo3CrPG6cAzAYgmzKyxRiYSSDkS6eGJdyVJm7WaYA5ECaAD9wLB2T4EEeymA5aFVcYXCA==",
+      "license": "MIT",
+      "engines": {
+        "node": ">=6"
+      }
     },
     "node_modules/detect-libc": {
       "version": "2.0.4",
@@ -1718,12 +2723,82 @@ package-lock.json
         "node": ">=8"
       }
     },
+    "node_modules/dot-case": {
+      "version": "3.0.4",
+      "resolved": "https://registry.npmjs.org/dot-case/-/dot-case-3.0.4.tgz",
+      "integrity": "sha512-Kv5nKlh6yRrdrGvxeJ2e5y2eRUpkUosIW4A2AS38zwSz27zu7ufDwQPi5Jhs3XAlGNetl3bmnGhQsMtkKJnj3w==",
+      "license": "MIT",
+      "dependencies": {
+        "no-case": "^3.0.4",
+        "tslib": "^2.0.3"
+      }
+    },
+    "node_modules/glob-to-regexp": {
+      "version": "0.4.1",
+      "resolved": "https://registry.npmjs.org/glob-to-regexp/-/glob-to-regexp-0.4.1.tgz",
+      "integrity": "sha512-lkX1HJXwyMcprw/5YUZc2s7DrpAiHB21/V+E1rHUrVNokkvB6bqMzT0VfV6/86ZNabt1k14YOIaT7nDvOX3Iiw==",
+      "license": "BSD-2-Clause"
+    },
     "node_modules/is-arrayish": {
       "version": "0.3.2",
       "resolved": "https://registry.npmjs.org/is-arrayish/-/is-arrayish-0.3.2.tgz",
       "integrity": "sha512-eVRqCvVlZbuw3GrM63ovNSNAeA1K16kaR/LRY/92w0zxQ5/1YzwblUX652i4Xs9RwAGjW9d9y6X88t8OaAJfWQ==",
       "license": "MIT",
       "optional": true
+    },
+    "node_modules/isows": {
+      "version": "1.0.7",
+      "resolved": "https://registry.npmjs.org/isows/-/isows-1.0.7.tgz",
+      "integrity": "sha512-I1fSfDCZL5P0v33sVqeTDSpcstAg/N+wF5HS033mogOVIp4B+oHC7oOCsA3axAbBSGTJ8QubbNmnIRN/h8U7hg==",
+      "funding": [
+        {
+          "type": "github",
+          "url": "https://github.com/sponsors/wevm"
+        }
+      ],
+      "license": "MIT",
+      "peerDependencies": {
+        "ws": "*"
+      }
+    },
+    "node_modules/js-cookie": {
+      "version": "3.0.5",
+      "resolved": "https://registry.npmjs.org/js-cookie/-/js-cookie-3.0.5.tgz",
+      "integrity": "sha512-cEiJEAEoIbWfCZYKWhVwFuvPX1gETRYPw6LlaTKoxD3s2AkXzkCjnp6h0V77ozyqj0jakteJ4YqDJT830+lVGw==",
+      "license": "MIT",
+      "engines": {
+        "node": ">=14"
+      }
+    },
+    "node_modules/lower-case": {
+      "version": "2.0.2",
+      "resolved": "https://registry.npmjs.org/lower-case/-/lower-case-2.0.2.tgz",
+      "integrity": "sha512-7fm3l3NAF9WfN6W3JOmf5drwpVqX78JtoGJ3A6W0a6ZnldM41w2fV5D490psKFTpMds8TJse/eHLFFsNHHjHgg==",
+      "license": "MIT",
+      "dependencies": {
+        "tslib": "^2.0.3"
+      }
+    },
+    "node_modules/lucide-react": {
+      "version": "0.525.0",
+      "resolved": "https://registry.npmjs.org/lucide-react/-/lucide-react-0.525.0.tgz",
+      "integrity": "sha512-Tm1txJ2OkymCGkvwoHt33Y2JpN5xucVq1slHcgE6Lk0WjDfjgKWor5CdVER8U6DvcfMwh4M8XxmpTiyzfmfDYQ==",
+      "license": "ISC",
+      "peerDependencies": {
+        "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0"
+      }
+    },
+    "node_modules/map-obj": {
+      "version": "4.3.0",
+      "resolved": "https://registry.npmjs.org/map-obj/-/map-obj-4.3.0.tgz",
+      "integrity": "sha512-hdN1wVrZbb29eBGiGjJbeP8JbKjq1urkHJ/LIP/NY48MZ1QVXUsQBV1G1zvYFHn1XE06cwjBsOI2K3Ulnj1YXQ==",
+      "license": "MIT",
+      "engines": {
+        "node": ">=8"
+      },
+      "funding": {
+        "url": "https://github.com/sponsors/sindresorhus"
+      }
     },
     "node_modules/nanoid": {
       "version": "3.3.11",
@@ -1795,6 +2870,16 @@ package-lock.json
         "sass": {
           "optional": true
         }
+      }
+    },
+    "node_modules/no-case": {
+      "version": "3.0.4",
+      "resolved": "https://registry.npmjs.org/no-case/-/no-case-3.0.4.tgz",
+      "integrity": "sha512-fgAN3jGAh+RoxUGZHTSOLJIqUc2wmoBwGR4tbpNAKmmovFoWq0OdRkb0VkldReO2a2iBT/OEulG9XSUc10r3zg==",
+      "license": "MIT",
+      "dependencies": {
+        "lower-case": "^2.0.2",
+        "tslib": "^2.0.3"
       }
     },
     "node_modules/picocolors": {
@@ -1871,6 +2956,12 @@ package-lock.json
         "node": ">=10"
       }
     },
+    "node_modules/server-only": {
+      "version": "0.0.1",
+      "resolved": "https://registry.npmjs.org/server-only/-/server-only-0.0.1.tgz",
+      "integrity": "sha512-qepMx2JxAa5jjfzxG79yPPq+8BuFToHd1hm7kI+Z4zAq1ftQiP7HcxMhDDItrbtwVeLg/cY2JnKnrcFkmiswNA==",
+      "license": "MIT"
+    },
     "node_modules/sharp": {
       "version": "0.34.2",
       "resolved": "https://registry.npmjs.org/sharp/-/sharp-0.34.2.tgz",
@@ -1923,6 +3014,30 @@ package-lock.json
         "is-arrayish": "^0.3.1"
       }
     },
+    "node_modules/snake-case": {
+      "version": "3.0.4",
+      "resolved": "https://registry.npmjs.org/snake-case/-/snake-case-3.0.4.tgz",
+      "integrity": "sha512-LAOh4z89bGQvl9pFfNF8V146i7o7/CqFPbqzYgP+yYzDIDeS9HaNFtXABamRW+AQzEVODcvE79ljJ+8a9YSdMg==",
+      "license": "MIT",
+      "dependencies": {
+        "dot-case": "^3.0.4",
+        "tslib": "^2.0.3"
+      }
+    },
+    "node_modules/snakecase-keys": {
+      "version": "8.0.1",
+      "resolved": "https://registry.npmjs.org/snakecase-keys/-/snakecase-keys-8.0.1.tgz",
+      "integrity": "sha512-Sj51kE1zC7zh6TDlNNz0/Jn1n5HiHdoQErxO8jLtnyrkJW/M5PrI7x05uDgY3BO7OUQYKCvmeMurW6BPUdwEOw==",
+      "license": "MIT",
+      "dependencies": {
+        "map-obj": "^4.1.0",
+        "snake-case": "^3.0.4",
+        "type-fest": "^4.15.0"
+      },
+      "engines": {
+        "node": ">=18"
+      }
+    },
     "node_modules/source-map-js": {
       "version": "1.2.1",
       "resolved": "https://registry.npmjs.org/source-map-js/-/source-map-js-1.2.1.tgz",
@@ -1931,6 +3046,12 @@ package-lock.json
       "engines": {
         "node": ">=0.10.0"
       }
+    },
+    "node_modules/std-env": {
+      "version": "3.9.0",
+      "resolved": "https://registry.npmjs.org/std-env/-/std-env-3.9.0.tgz",
+      "integrity": "sha512-UGvjygr6F6tpH7o2qyqR6QYpwraIjKSdtzyBdyytFOHmPZY917kwdwLG0RbOjWOnKmnm3PeHjaoLLMie7kPLQw==",
+      "license": "MIT"
     },
     "node_modules/streamsearch": {
       "version": "1.1.0",
@@ -1963,17 +3084,58 @@ package-lock.json
         }
       }
     },
+    "node_modules/surrealdb": {
+      "version": "1.3.2",
+      "resolved": "https://registry.npmjs.org/surrealdb/-/surrealdb-1.3.2.tgz",
+      "integrity": "sha512-mL7nij33iuon3IQP72F46fgX3p2LAxFCWCBDbZB7IohZ13RTEwJVNq7nZeP1eMSceQUpKzS6OHIWOuF9LYAkNw==",
+      "license": "Apache-2.0",
+      "dependencies": {
+        "isows": "^1.0.6",
+        "uuidv7": "^1.0.1"
+      },
+      "engines": {
+        "node": ">=18.0.0"
+      },
+      "peerDependencies": {
+        "tslib": "^2.6.3",
+        "typescript": "^5.0.0"
+      }
+    },
+    "node_modules/swr": {
+      "version": "2.3.3",
+      "resolved": "https://registry.npmjs.org/swr/-/swr-2.3.3.tgz",
+      "integrity": "sha512-dshNvs3ExOqtZ6kJBaAsabhPdHyeY4P2cKwRCniDVifBMoG/SVI7tfLWqPXriVspf2Rg4tPzXJTnwaihIeFw2A==",
+      "license": "MIT",
+      "dependencies": {
+        "dequal": "^2.0.3",
+        "use-sync-external-store": "^1.4.0"
+      },
+      "peerDependencies": {
+        "react": "^16.11.0 || ^17.0.0 || ^18.0.0 || ^19.0.0"
+      }
+    },
     "node_modules/tslib": {
       "version": "2.8.1",
       "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.8.1.tgz",
       "integrity": "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==",
       "license": "0BSD"
     },
+    "node_modules/type-fest": {
+      "version": "4.41.0",
+      "resolved": "https://registry.npmjs.org/type-fest/-/type-fest-4.41.0.tgz",
+      "integrity": "sha512-TeTSQ6H5YHvpqVwBRcnLDCBnDOHWYu7IvGbHT6N8AOymcr9PJGjc1GTtiWZTYg0NCgYwvnYWEkVChQAr9bjfwA==",
+      "license": "(MIT OR CC0-1.0)",
+      "engines": {
+        "node": ">=16"
+      },
+      "funding": {
+        "url": "https://github.com/sponsors/sindresorhus"
+      }
+    },
     "node_modules/typescript": {
       "version": "5.8.3",
       "resolved": "https://registry.npmjs.org/typescript/-/typescript-5.8.3.tgz",
       "integrity": "sha512-p1diW6TqL9L07nNxvRMM7hMMw4c5XOo/1ibL4aAIGmSAt9slTE1Xgw5KWuof2uTOvCg9BY7ZRi+GaF+7sfgPeQ==",
-      "dev": true,
       "license": "Apache-2.0",
       "bin": {
         "tsc": "bin/tsc",
@@ -1989,6 +3151,46 @@ package-lock.json
       "integrity": "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==",
       "dev": true,
       "license": "MIT"
+    },
+    "node_modules/use-sync-external-store": {
+      "version": "1.5.0",
+      "resolved": "https://registry.npmjs.org/use-sync-external-store/-/use-sync-external-store-1.5.0.tgz",
+      "integrity": "sha512-Rb46I4cGGVBmjamjphe8L/UnvJD+uPPtTkNvX5mZgqdbavhI4EbgIWJiIHXJ8bc/i9EQGPRh4DwEURJ552Do0A==",
+      "license": "MIT",
+      "peerDependencies": {
+        "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0"
+      }
+    },
+    "node_modules/uuidv7": {
+      "version": "1.0.2",
+      "resolved": "https://registry.npmjs.org/uuidv7/-/uuidv7-1.0.2.tgz",
+      "integrity": "sha512-8JQkH4ooXnm1JCIhqTMbtmdnYEn6oKukBxHn1Ic9878jMkL7daTI7anTExfY18VRCX7tcdn5quzvCb6EWrR8PA==",
+      "license": "Apache-2.0",
+      "bin": {
+        "uuidv7": "cli.js"
+      }
+    },
+    "node_modules/ws": {
+      "version": "8.18.3",
+      "resolved": "https://registry.npmjs.org/ws/-/ws-8.18.3.tgz",
+      "integrity": "sha512-PEIGCY5tSlUt50cqyMXfCzX+oOPqN0vuGqWzbcJ2xvnkzkq46oOpz7dQaTDBdfICb4N14+GARUDw2XV2N4tvzg==",
+      "license": "MIT",
+      "peer": true,
+      "engines": {
+        "node": ">=10.0.0"
+      },
+      "peerDependencies": {
+        "bufferutil": "^4.0.1",
+        "utf-8-validate": ">=5.0.2"
+      },
+      "peerDependenciesMeta": {
+        "bufferutil": {
+          "optional": true
+        },
+        "utf-8-validate": {
+          "optional": true
+        }
+      }
     }
   }
 }
@@ -2006,18 +3208,56 @@ package.json
     "lint": "next lint"
   },
   "dependencies": {
+    "@clerk/nextjs": "^6.23.1",
+    "lucide-react": "^0.525.0",
+    "next": "15.3.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "next": "15.3.4"
+    "surrealdb": "^1.3.2"
   },
   "devDependencies": {
-    "typescript": "^5",
     "@types/node": "^20",
     "@types/react": "^19",
-    "@types/react-dom": "^19"
+    "@types/react-dom": "^19",
+    "typescript": "^5"
   }
 }
 
+
+styles\authButtons.module.css
+.authButtons {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.clerkButton {
+  padding: 0.5rem 1rem;
+  background: linear-gradient(90deg, #4C6EF5, #F472B6);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.clerkButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+@media (max-width: 768px) {
+  .authButtons {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .clerkButton {
+    width: 100%;
+    text-align: center;
+  }
+}
 
 tsconfig.json
 {
@@ -2048,3 +3288,25 @@ tsconfig.json
   "exclude": ["node_modules"]
 }
 
+
+types\index.ts
+import { RecordId } from 'surrealdb';
+
+export interface Course {
+  id: RecordId | string;
+  title: string;
+  description: string;
+  icon: string;
+  image: string;
+  created_at?: string;
+}
+
+export interface Lesson {
+  id: RecordId | string;
+  course: RecordId | string;
+  title: string;
+  content: string;
+  thumbnail: string;
+  videoEmbed: string;
+  created_at?: string;
+}

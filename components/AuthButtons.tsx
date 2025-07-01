@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { SignInButton, SignedIn, SignedOut, UserButton, SignUpButton, useUser } from '@clerk/nextjs';
 import Link from 'next/link';
@@ -18,7 +18,7 @@ export default function AuthButtons() {
           <UserButton afterSignOutUrl="/" />
           {isAdmin && (
             <Link href="/admin">
-              <button className={styles.clerkButton}>Admin Panel</button>
+              <button className={styles.clerkButton}>Create New Lesson</button>
             </Link>
           )}
         </div>
