@@ -1,7 +1,466 @@
+app\admin\AdminPanel.module.css
+.container {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: calc(100vh - 80px);
+  background-color: #f5f7fa;
+  font-family: 'Inter', sans-serif;
+}
+
+.title {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.subtitle {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 1rem;
+}
+
+.actionButtons {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.actionButton {
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  color: white;
+  padding: 1.5rem 3rem;
+  border-radius: 12px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  text-align: center;
+}
+
+.actionButton:hover {
+  background: linear-gradient(90deg, #2563eb, #3b82f6);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.activeButton {
+  background: linear-gradient(90deg, #1e40af, #3b82f6);
+  transform: scale(1.05);
+}
+
+.formContainer {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.formGroup label {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.formGroup input,
+.formGroup select {
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 1rem;
+  color: #1f2937;
+  width: 100%;
+  transition: border-color 0.2s ease;
+}
+
+.formGroup input:focus,
+.formGroup select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.button {
+  background-color: #3b82f6;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.button:hover {
+  background-color: #2563eb;
+  transform: scale(1.05);
+}
+
+.error {
+  color: #dc2626;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.success {
+  color: #16a34a;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+
+  .title {
+    font-size: 1.75rem;
+  }
+
+  .actionButtons {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .actionButton {
+    padding: 1rem 2rem;
+    font-size: 1rem;
+  }
+
+  .formContainer {
+    padding: 1rem;
+  }
+}
+
+app\admin\page.tsx
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useUser } from '@clerk/nextjs';
+import styles from './AdminPanel.module.css';
+import { Course } from '@/types';
+
+export default function AdminPanel() {
+  const { user, isLoaded } = useUser();
+  const router = useRouter();
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [courseFormData, setCourseFormData] = useState({
+    title: '',
+    description: '',
+    image: '',
+    icon: '',
+  });
+  const [lessonFormData, setLessonFormData] = useState({
+    courseId: '',
+    title: '',
+    content: '',
+    thumbnail: '',
+    videoEmbed: '',
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [activeForm, setActiveForm] = useState<'course' | 'lesson' | null>(null);
+
+  useEffect(() => {
+    if (isLoaded && (!user || user.publicMetadata?.role !== 'admin')) {
+      router.push('/courses');
+    }
+
+    async function fetchCourses() {
+      try {
+        const response = await fetch('/api/courses');
+        if (!response.ok) {
+          throw new Error('Failed to fetch courses');
+        }
+        const data = await response.json();
+        setCourses(Array.isArray(data) ? data : []);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchCourses();
+  }, [isLoaded, user, router]);
+
+  const handleCourseInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setCourseFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleLessonInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setLessonFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleCourseSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await fetch('/api/courses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: courseFormData.title,
+          description: courseFormData.description,
+          image: courseFormData.image,
+          icon: courseFormData.icon,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create course');
+      }
+
+      setSuccess('Course created successfully!');
+      setCourseFormData({
+        title: '',
+        description: '',
+        image: '',
+        icon: '',
+      });
+
+      // Refresh courses list
+      const updatedResponse = await fetch('/api/courses');
+      if (updatedResponse.ok) {
+        const updatedData = await updatedResponse.json();
+        setCourses(Array.isArray(updatedData) ? updatedData : []);
+      }
+
+      setActiveForm(null); // Hide form after submission
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleLessonSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await fetch(`/api/courses/${lessonFormData.courseId}/lessons`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: lessonFormData.title,
+          content: lessonFormData.content,
+          thumbnail: lessonFormData.thumbnail,
+          videoEmbed: lessonFormData.videoEmbed,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create lesson');
+      }
+
+      setSuccess('Lesson created successfully!');
+      setLessonFormData({
+        courseId: lessonFormData.courseId,
+        title: '',
+        content: '',
+        thumbnail: '',
+        videoEmbed: '',
+      });
+
+      setActiveForm(null); // Hide form after submission
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  if (loading) return <div className={styles.container}>Loading...</div>;
+  if (!user || user.publicMetadata?.role !== 'admin') return null;
+
+  return (
+    <div className={styles.container}>
+      <h1 className={styles.title}>Admin Panel</h1>
+
+      {/* Action Buttons */}
+      <div className={styles.actionButtons}>
+        <button
+          className={`${styles.actionButton} ${activeForm === 'course' ? styles.activeButton : ''}`}
+          onClick={() => setActiveForm(activeForm === 'course' ? null : 'course')}
+        >
+          Create New Course
+        </button>
+        <button
+          className={`${styles.actionButton} ${activeForm === 'lesson' ? styles.activeButton : ''}`}
+          onClick={() => setActiveForm(activeForm === 'lesson' ? null : 'lesson')}
+        >
+          Create New Lesson
+        </button>
+      </div>
+
+      {/* Error and Success Messages */}
+      {error && <div className={styles.error}>{error}</div>}
+      {success && <div className={styles.success}>{success}</div>}
+
+      {/* Course Creation Form */}
+      {activeForm === 'course' && (
+        <div className={styles.formContainer}>
+          <h2 className={styles.subtitle}>Create New Course</h2>
+          <form onSubmit={handleCourseSubmit} className={styles.form}>
+            <div className={styles.formGroup}>
+              <label htmlFor="title">Course Title</label>
+              <input
+                type="text"
+                id="title"
+                name="title"
+                value={courseFormData.title}
+                onChange={handleCourseInputChange}
+                required
+              />
+            </div>
+            <div className={styles.formGroup}>
+              <label htmlFor="description">Description</label>
+              <input
+                type="text"
+                id="description"
+                name="description"
+                value={courseFormData.description}
+                onChange={handleCourseInputChange}
+                required
+              />
+            </div>
+            <div className={styles.formGroup}>
+              <label htmlFor="image">Image URL</label>
+              <input
+                type="url"
+                id="image"
+                name="image"
+                value={courseFormData.image}
+                onChange={handleCourseInputChange}
+                required
+              />
+            </div>
+
+            <button type="submit" className={styles.button}>
+              Create Course
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* Lesson Creation Form */}
+      {activeForm === 'lesson' && (
+        <div className={styles.formContainer}>
+          <h2 className={styles.subtitle}>Create New Lesson</h2>
+          <form onSubmit={handleLessonSubmit} className={styles.form}>
+            <div className={styles.formGroup}>
+              <label htmlFor="courseId">Select Course</label>
+              <select
+                id="courseId"
+                name="courseId"
+                value={lessonFormData.courseId}
+                onChange={handleLessonInputChange}
+                required
+              >
+                <option value="">-- Select a Course --</option>
+                {courses.map((course) => {
+                  const courseId =
+                    typeof course.id === 'string'
+                      ? course.id.split(':').pop() || course.id
+                      : String(course.id);
+                  return (
+                    <option key={courseId} value={courseId}>
+                      {course.title}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+            <div className={styles.formGroup}>
+              <label htmlFor="title">Lesson Title</label>
+              <input
+                type="text"
+                id="title"
+                name="title"
+                value={lessonFormData.title}
+                onChange={handleLessonInputChange}
+                required
+              />
+            </div>
+            <div className={styles.formGroup}>
+              <label htmlFor="content">Lesson Content</label>
+              <input
+                type="text"
+                id="content"
+                name="content"
+                value={lessonFormData.content}
+                onChange={handleLessonInputChange}
+                required
+              />
+            </div>
+            <div className={styles.formGroup}>
+              <label htmlFor="thumbnail">Thumbnail URL</label>
+              <input
+                type="url"
+                id="thumbnail"
+                name="thumbnail"
+                value={lessonFormData.thumbnail}
+                onChange={handleLessonInputChange}
+                required
+              />
+            </div>
+            <div className={styles.formGroup}>
+              <label htmlFor="videoEmbed">Video Embed URL</label>
+              <input
+                type="url"
+                id="videoEmbed"
+                name="videoEmbed"
+                value={lessonFormData.videoEmbed}
+                onChange={handleLessonInputChange}
+                required
+              />
+            </div>
+            <button type="submit" className={styles.button}>
+              Create Lesson
+            </button>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
+
 app\api\courses\route.ts
 import { NextResponse } from 'next/server';
 import db, { connectDB } from '@/lib/surrealdb';
 import { Course } from '@/types';
+import { currentUser } from '@clerk/nextjs/server';
 
 export async function GET(req: Request) {
   try {
@@ -33,11 +492,134 @@ export async function GET(req: Request) {
   }
 }
 
-app\api\courses\[courseId]\lessons\route.ts
+export async function POST(req: Request) {
+  try {
+    const user = await currentUser();
+    if (!user) {
+      console.log('POST /api/courses: User not authenticated');
+      return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+    }
 
+    // Check if user is admin
+    const isAdmin = user.publicMetadata?.role === 'admin';
+    if (!isAdmin) {
+      console.log('POST /api/courses: Unauthorized, user role:', user.publicMetadata?.role);
+      return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 403 });
+    }
+
+    const body = await req.json();
+    console.log('POST /api/courses: Received body:', body);
+
+    const { title, description, image, icon } = body;
+
+
+    await connectDB();
+
+    // Let SurrealDB generate the ID automatically
+    const newCourse = await db.create<Course>('courses', {
+      title,
+      description,
+      image,
+      icon,
+      created_at: new Date().toISOString(),
+    });
+    console.log('POST /api/courses: Course created successfully:', newCourse);
+
+    return NextResponse.json(newCourse, { status: 201 });
+  } catch (error: any) {
+    console.error('POST /api/courses: Error creating course:', error.message);
+    return NextResponse.json(
+      { error: 'Failed to create course', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+app\api\courses\[courseId]\delete\route.ts
+import { NextResponse } from 'next/server';
+import { currentUser } from '@clerk/nextjs/server';
+import db, { connectDB } from '@/lib/surrealdb';
+import { RecordId } from 'surrealdb';
+import { Course, Lesson } from '@/types';
+
+export async function DELETE(
+  req: Request,
+  { params }: { params: Promise<{ courseId: string }> }
+) {
+  try {
+    console.log('Starting DELETE request for course');
+    const user = await currentUser();
+    if (!user) {
+      console.log('User not authenticated');
+      return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+    }
+    console.log('User authenticated:', user.id);
+
+    // Check if user is admin
+    const isAdmin = user.publicMetadata?.role === 'admin';
+    if (!isAdmin) {
+      console.log('Unauthorized: User is not admin, role:', user.publicMetadata?.role);
+      return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 403 });
+    }
+
+    const { courseId } = await params;
+    if (!courseId || courseId === 'undefined') {
+      console.log('Invalid course ID');
+      return NextResponse.json({ error: 'Course ID is required' }, { status: 400 });
+    }
+
+    await connectDB();
+    const courseIdRecord = new RecordId('courses', courseId);
+    console.log('DELETE Course ID =>', courseId);
+    console.log('RECORD ID =>', courseIdRecord);
+
+    // Check if course exists
+    const course = await db.select<Course>(courseIdRecord);
+    if (!course) {
+      console.log(`Course not found: ${courseIdRecord}`);
+      return NextResponse.json({ error: 'Course not found' }, { status: 404 });
+    }
+    console.log('Course found:', course);
+
+    // Check for associated lessons
+    const lessons = await db.query<Lesson[]>(`SELECT * FROM lessons WHERE course = $courseId`, {
+      courseId: `courses:${courseId}`,
+    });
+    let lessonCount = 0;
+    if (Array.isArray(lessons)) {
+      lessonCount = Array.isArray(lessons[0]) ? lessons[0].length : lessons.length;
+    } else if (Array.isArray((lessons[0] as any)?.result)) {
+      lessonCount = (lessons[0] as { result: Lesson[] }).result.length;
+    }
+
+    if (lessonCount > 0) {
+      console.log(`Cannot delete course ${courseId}: ${lessonCount} lessons associated`);
+      return NextResponse.json(
+        { error: 'Cannot delete course with associated lessons' },
+        { status: 400 }
+      );
+    }
+
+    console.log(`Before deleting course: ${courseIdRecord}`);
+    await db.delete(courseIdRecord);
+    console.log('DELETE RESULT =>', 'Course deleted');
+
+    console.log(`Course deleted: ${courseIdRecord}`);
+    return NextResponse.json({ message: 'Course deleted successfully' }, { status: 200 });
+  } catch (error: any) {
+    console.error('DELETE ERROR =>', error.message);
+    return NextResponse.json(
+      { error: 'Failed to delete course', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+app\api\courses\[courseId]\lessons\route.ts
 import { NextResponse } from 'next/server';
 import db, { connectDB } from '@/lib/surrealdb';
 import { Lesson } from '@/types';
+import { currentUser } from '@clerk/nextjs/server';
 
 export async function GET(
   req: Request,
@@ -53,7 +635,7 @@ export async function GET(
 
     const sql = `SELECT * FROM lessons WHERE course = $courseId ORDER BY created_at ASC`;
     const result = await db.query<Lesson[]>(sql, { courseId: `courses:${courseId}` });
-    console.log('Raw lessons query result:', result); // لاگ برای دیباگ
+    console.log('Raw lessons query result:', result); // Debug log
 
     let lessons: Lesson[] = [];
     if (Array.isArray(result)) {
@@ -62,7 +644,7 @@ export async function GET(
       lessons = (result[0] as { result: Lesson[] }).result;
     }
 
-    console.log('Processed lessons:', lessons); // لاگ برای دیباگ
+    console.log('Processed lessons:', lessons); // Debug log
     return NextResponse.json(lessons, { status: 200 });
   } catch (error: any) {
     console.error(`Error fetching lessons for course ${courseId}:`, error.message);
@@ -73,13 +655,128 @@ export async function GET(
   }
 }
 
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ courseId: string }> }
+) {
+  try {
+    const user = await currentUser();
+    if (!user) {
+      return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+    }
 
-app\api\courses\[courseId]\lessons\[lessonId]\route.ts
+    // Check if user is admin
+    const isAdmin = user.publicMetadata?.role === 'admin';
+    if (!isAdmin) {
+      return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 403 });
+    }
 
+    const { courseId } = await params;
+    if (!courseId || courseId === 'undefined') {
+      return NextResponse.json({ error: 'Invalid course ID' }, { status: 400 });
+    }
+
+    const { title, content, thumbnail, videoEmbed } = await req.json();
+    if (!title || !content || !thumbnail || !videoEmbed) {
+      return NextResponse.json(
+        { error: 'Title, content, thumbnail, and video embed are required' },
+        { status: 400 }
+      );
+    }
+
+    await connectDB();
+
+    // Verify course exists
+    const course = await db.select(`courses:${courseId}`);
+    if (!course) {
+      return NextResponse.json({ error: 'Course not found' }, { status: 404 });
+    }
+
+    const newLesson = await db.create<Lesson>('lessons', {
+      course: `courses:${courseId}`,
+      title,
+      content,
+      thumbnail,
+      videoEmbed,
+      created_at: new Date().toISOString(),
+    });
+
+    return NextResponse.json(newLesson, { status: 201 });
+  } catch (error: any) {
+    console.error(`Error creating lesson for course ${courseId}:`, error.message);
+    return NextResponse.json(
+      { error: 'Failed to create lesson', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+app\api\courses\[courseId]\lessons\[lessonId]\delete\route.ts
 import { NextResponse } from 'next/server';
+import { currentUser } from '@clerk/nextjs/server';
 import db, { connectDB } from '@/lib/surrealdb';
 import { RecordId } from 'surrealdb';
 import { Lesson } from '@/types';
+
+export async function DELETE(
+  req: Request,
+  { params }: { params: Promise<{ courseId: string; lessonId: string }> }
+) {
+  try {
+    console.log('Starting DELETE request for lesson');
+    const user = await currentUser();
+    if (!user) {
+      console.log('User not authenticated');
+      return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+    }
+    console.log('User authenticated:', user.id);
+
+    // Check if user is admin
+    const isAdmin = user.publicMetadata?.role === 'admin';
+    if (!isAdmin) {
+      console.log('Unauthorized: User is not admin, role:', user.publicMetadata?.role);
+      return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 403 });
+    }
+
+    const { courseId, lessonId } = await params;
+    if (!courseId || courseId === 'undefined' || !lessonId || lessonId === 'undefined') {
+      console.log('Invalid course or lesson ID');
+      return NextResponse.json({ error: 'Course ID and Lesson ID are required' }, { status: 400 });
+    }
+
+    await connectDB();
+    const lessonIdRecord = new RecordId('lessons', lessonId);
+    console.log('DELETE Lesson ID =>', lessonId);
+    console.log('RECORD ID =>', lessonIdRecord);
+
+    const lesson = await db.select<Lesson>(lessonIdRecord);
+    if (!lesson) {
+      console.log(`Lesson not found: ${lessonIdRecord}`);
+      return NextResponse.json({ error: 'Lesson not found' }, { status: 404 });
+    }
+    console.log('Lesson found:', lesson);
+
+    console.log(`Before deleting lesson: ${lessonIdRecord}`);
+    await db.delete(lessonIdRecord);
+    console.log('DELETE RESULT =>', 'Lesson deleted');
+
+    console.log(`Lesson deleted: ${lessonIdRecord}`);
+    return NextResponse.json({ message: 'Lesson deleted successfully' }, { status: 200 });
+  } catch (error: any) {
+    console.error('DELETE ERROR =>', error.message);
+    return NextResponse.json(
+      { error: 'Failed to delete lesson', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+app\api\courses\[courseId]\lessons\[lessonId]\route.ts
+import { NextResponse } from 'next/server';
+import db, { connectDB } from '@/lib/surrealdb';
+import { RecordId, Patch } from 'surrealdb';
+import { Lesson } from '@/types';
+import { currentUser } from '@clerk/nextjs/server';
 
 export async function GET(
   req: Request,
@@ -87,7 +784,7 @@ export async function GET(
 ) {
   try {
     const { courseId, lessonId } = await params;
-    console.log('Requested courseId:', courseId, 'lessonId:', lessonId); // لاگ برای دیباگ
+    console.log('Requested courseId:', courseId, 'lessonId:', lessonId);
 
     if (!courseId || courseId === 'undefined' || !lessonId || lessonId === 'undefined') {
       return NextResponse.json({ error: 'Course ID and Lesson ID are required' }, { status: 400 });
@@ -95,10 +792,10 @@ export async function GET(
 
     await connectDB();
     const lessonIdRecord = new RecordId('lessons', lessonId);
-    console.log('Constructed lesson RecordId:', lessonIdRecord.toString()); // لاگ برای دیباگ
+    console.log('Constructed lesson RecordId:', lessonIdRecord.toString());
 
     const lesson = await db.select<Lesson>(lessonIdRecord);
-    console.log('Selected lesson:', lesson); // لاگ برای دیباگ
+    console.log('Selected lesson:', lesson);
 
     if (!lesson) {
       return NextResponse.json({ error: 'Lesson not found' }, { status: 404 });
@@ -113,8 +810,6 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid course reference' }, { status: 500 });
     }
 
-
-
     return NextResponse.json(lesson, { status: 200 });
   } catch (error: any) {
     console.error('Error fetching lesson:', error.message);
@@ -125,11 +820,71 @@ export async function GET(
   }
 }
 
+export async function PUT(
+  req: Request,
+  { params }: { params: Promise<{ courseId: string; lessonId: string }> }
+) {
+  try {
+    const user = await currentUser();
+    if (!user) {
+      console.log('User not authenticated');
+      return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+    }
+
+    const isAdmin = user.publicMetadata?.role === 'admin';
+    if (!isAdmin) {
+      console.log('Unauthorized: User is not admin, role:', user.publicMetadata?.role);
+      return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 403 });
+    }
+
+    const { courseId, lessonId } = await params;
+    if (!courseId || courseId === 'undefined' || !lessonId || lessonId === 'undefined') {
+      return NextResponse.json({ error: 'Course ID and Lesson ID are required' }, { status: 400 });
+    }
+
+    const { title, content, thumbnail, videoEmbed } = await req.json();
+    if (!title || !content || !thumbnail || !videoEmbed) {
+      return NextResponse.json(
+        { error: 'Title, content, thumbnail, and video embed are required' },
+        { status: 400 }
+      );
+    }
+
+    await connectDB();
+    const lessonIdRecord = new RecordId('lessons', lessonId);
+
+    const existingLesson = await db.select<Lesson>(lessonIdRecord);
+    if (!existingLesson) {
+      console.log(`Lesson not found: ${lessonIdRecord}`);
+      return NextResponse.json({ error: 'Lesson not found' }, { status: 404 });
+    }
+
+    const patchData: Patch[] = [
+      { op: 'replace', path: '/title', value: title },
+      { op: 'replace', path: '/content', value: content },
+      { op: 'replace', path: '/thumbnail', value: thumbnail },
+      { op: 'replace', path: '/videoEmbed', value: videoEmbed },
+    ];
+
+    const updatedLesson = await db.patch(lessonIdRecord, patchData);
+    console.log('Updated lesson:', updatedLesson);
+
+    return NextResponse.json(updatedLesson, { status: 200 });
+  } catch (error: any) {
+    console.error('Error updating lesson:', error.message);
+    return NextResponse.json(
+      { error: 'Failed to update lesson', details: error.message },
+      { status: 500 }
+    );
+  }
+}
 
 app\api\courses\[courseId]\route.ts
 import { NextResponse } from 'next/server';
 import db, { connectDB } from '@/lib/surrealdb';
 import { Course } from '@/types';
+import { currentUser } from '@clerk/nextjs/server';
+import { RecordId, Patch } from 'surrealdb';
 
 export async function GET(
   req: Request,
@@ -145,7 +900,7 @@ export async function GET(
 
     const sql = `SELECT * FROM courses WHERE id = $courseId`;
     const result = await db.query(sql, { courseId: `courses:${courseId}` });
-    console.log('Raw course query result:', result); // لاگ برای دیباگ
+    console.log('Raw course query result:', result);
 
     let course: Course | null = null;
     if (Array.isArray(result) && result[0] && Array.isArray(result[0].result)) {
@@ -154,7 +909,7 @@ export async function GET(
       course = result[0] || null;
     }
 
-    console.log('Processed course:', course); // لاگ برای دیباگ
+    console.log('Processed course:', course);
 
     if (!course) {
       return NextResponse.json({ error: 'Course not found' }, { status: 404 });
@@ -165,6 +920,65 @@ export async function GET(
     console.error(`Error fetching course ${courseId}:`, error.message);
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(
+  req: Request,
+  { params }: { params: Promise<{ courseId: string }> }
+) {
+  try {
+    const user = await currentUser();
+    if (!user) {
+      console.log('User not authenticated');
+      return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+    }
+
+    const isAdmin = user.publicMetadata?.role === 'admin';
+    if (!isAdmin) {
+      console.log('Unauthorized: User is not admin, role:', user.publicMetadata?.role);
+      return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 403 });
+    }
+
+    const { courseId } = await params;
+    if (!courseId || courseId === 'undefined') {
+      return NextResponse.json({ error: 'Invalid course ID' }, { status: 400 });
+    }
+
+    const { title, description, image, icon } = await req.json();
+    if (!title || !description || !image || !icon) {
+      return NextResponse.json(
+        { error: 'Title, description, image, and icon are required' },
+        { status: 400 }
+      );
+    }
+
+    await connectDB();
+    const courseIdRecord = new RecordId('courses', courseId);
+
+    const existingCourse = await db.select<Course>(courseIdRecord);
+    if (!existingCourse) {
+      console.log(`Course not found: ${courseIdRecord}`);
+      return NextResponse.json({ error: 'Course not found' }, { status: 404 });
+    }
+
+    const patchData: Patch[] = [
+      { op: 'replace', path: '/title', value: title },
+      { op: 'replace', path: '/description', value: description },
+      { op: 'replace', path: '/image', value: image },
+      { op: 'replace', path: '/icon', value: icon },
+    ];
+
+    const updatedCourse = await db.patch(courseIdRecord, patchData);
+    console.log('Updated course:', updatedCourse);
+
+    return NextResponse.json(updatedCourse, { status: 200 });
+  } catch (error: any) {
+    console.error('Error updating course:', error.message);
+    return NextResponse.json(
+      { error: 'Failed to update course', details: error.message },
       { status: 500 }
     );
   }
@@ -190,69 +1004,111 @@ app\courses\Courses.module.css
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1.5rem;
 }
 
 .card {
-  background: linear-gradient(145deg, #ffffff, #f8fafc);
+  background: white;
   border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  padding: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
+  overflow: hidden;
 }
 
 .card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
 }
 
-.icon {
-  width: 50px;
-  height: 50px;
-  margin-bottom: 1rem;
+.cardLink {
+  display: contents;
+  text-decoration: none;
 }
 
-.image {
+.courseImage {
   width: 100%;
-  height: 150px;
-  object-fit: cover;
+  object-fit: cover; /* Ensures image fills frame, may crop slightly to avoid distortion */
   border-radius: 8px;
   margin-bottom: 1rem;
+  aspect-ratio: 16 / 9; /* Enforces consistent aspect ratio */
+}
+
+.cardContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex-grow: 1;
+  padding: 0 0.5rem;
 }
 
 .cardTitle {
-  font-size: 1.5rem;
+  font-size: 1.4rem;
   font-weight: 600;
   color: #1f2937;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
 }
 
 .description {
-  font-size: 1rem;
+  font-size: 0.95rem;
   color: #4b5563;
   margin-bottom: 1rem;
   flex-grow: 1;
+  line-height: 1.5;
 }
 
 .button {
-  background-color: #3b82f6;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
   color: white;
   padding: 0.75rem 1.5rem;
   border-radius: 6px;
   text-decoration: none;
   font-size: 1rem;
   font-weight: 600;
-  transition: background-color 0.3s ease, transform 0.2s ease;
+  text-align: center;
+  transition: all 0.3s ease;
 }
 
 .button:hover {
-  background-color: #2563eb;
+  background: linear-gradient(90deg, #2563eb, #3b82f6);
   transform: scale(1.05);
+}
+
+.deleteButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(90deg, #dc2626, #f87171);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  margin-top: 0.5rem;
+  align-self: center;
+}
+
+.deleteButton::before {
+  content: '\1F5D1'; /* Unicode for trash can icon */
+  font-size: 1rem;
+}
+
+.deleteButton:hover {
+  background: linear-gradient(90deg, #b91c1c, #dc2626);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.deleteButton:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .disabledButton {
@@ -263,6 +1119,54 @@ app\courses\Courses.module.css
   font-size: 1rem;
   font-weight: 600;
   cursor: not-allowed;
+}
+
+.loading,
+.error,
+.empty {
+  font-size: 1.2rem;
+  color: #4b5563;
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.error {
+  color: #dc2626;
+}
+
+.success {
+  color: #16a34a;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.signInPrompt {
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.signInPrompt h2 {
+  font-size: 1.5rem;
+  color: #1f2937;
+  margin-bottom: 1rem;
+}
+
+.signInButton {
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.signInButton:hover {
+  background: linear-gradient(90deg, #2563eb, #3b82f6);
+  transform: scale(1.05);
 }
 
 @media (max-width: 768px) {
@@ -279,17 +1183,40 @@ app\courses\Courses.module.css
   }
 
   .card {
-    padding: 1rem;
+    padding: 0.75rem;
+  }
+
+  .courseImage {
+    height: 180px; /* Adjusted for smaller screens */
   }
 }
 
-app\courses\page.tsx
+@media (max-width: 480px) {
+  .courseImage {
+    height: 160px; /* Further adjusted for very small screens */
+  }
 
+  .cardTitle {
+    font-size: 1.2rem;
+  }
+
+  .description {
+    font-size: 0.9rem;
+  }
+}
+.buttonContainer {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+app\courses\page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { SignedIn, SignedOut, SignInButton } from '@clerk/nextjs';
+import { SignedIn, SignedOut, SignInButton, useUser } from '@clerk/nextjs';
 import styles from './Courses.module.css';
 import { Course } from '@/types';
 
@@ -297,6 +1224,8 @@ export default function Courses() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const { user } = useUser();
 
   useEffect(() => {
     async function fetchCourses() {
@@ -306,14 +1235,13 @@ export default function Courses() {
             'Content-Type': 'application/json',
           },
         });
-        console.log('Fetch response status:', response.status); // لاگ برای دیباگ
+        console.log('Fetch response status:', response.status);
         if (!response.ok) {
           throw new Error('Failed to fetch courses');
         }
         const data = await response.json();
-        console.log('Fetched courses:', data); // لاگ برای دیباگ
+        console.log('Fetched courses:', data);
 
-        // اطمینان از اینکه داده‌ها آرایه هستند
         const coursesArray = Array.isArray(data) ? data : [];
         setCourses(coursesArray);
       } catch (err: any) {
@@ -326,46 +1254,91 @@ export default function Courses() {
     fetchCourses();
   }, []);
 
+  const handleDeleteCourse = async (courseId: string) => {
+    if (!confirm('Are you sure you want to delete this course?')) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/courses/${courseId}/delete`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setSuccess('Course deleted successfully');
+        setCourses((prev) => prev.filter((course) => {
+          const id = typeof course.id === 'string'
+            ? course.id.includes(':') ? course.id.split(':').pop() : course.id
+            : String(course.id);
+          return id !== courseId;
+        }));
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        const errorData = await res.json();
+        setError(errorData.error || 'Failed to delete course');
+        setTimeout(() => setError(null), 3000);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete course');
+      setTimeout(() => setError(null), 3000);
+    }
+  };
+
   return (
     <div className={styles.container}>
       <SignedIn>
         {loading && <div className={styles.loading}>Loading...</div>}
         {error && <div className={styles.error}>{error}</div>}
+        {success && <div className={styles.success}>{success}</div>}
         {!loading && !error && courses.length === 0 && (
           <div className={styles.empty}>No courses available.</div>
         )}
         {!loading && !error && courses.length > 0 && (
-          <div className={styles.grid}>
-            {courses.map((course) => {
-              // استخراج courseId با مدیریت فرمت‌های مختلف id
-              let courseId = '';
-              if (typeof course.id === 'string') {
-                // حذف هر چیزی قبل از آخرین ':'
-                const parts = course.id.split(':');
-                courseId = parts[parts.length - 1].replace(/⟩$/, ''); // حذف کاراکترهای اضافی
-              } else {
-                courseId = String(course.id);
-              }
-              console.log('Rendering course:', course, 'Extracted courseId:', courseId); // لاگ برای دیباگ
-              return (
-                <Link
-                  href={`/courses/${courseId}`}
-                  key={courseId}
-                  className={styles.card}
-                >
-                  <img
-                    src={course.image}
-                    alt={course.title}
-                    className={styles.courseImage}
-                  />
-                  <div className={styles.cardContent}>
-                    <h2 className={styles.title}>{course.title}</h2>
-                    <p className={styles.description}>{course.description}</p>
+          <>
+            <h1 className={styles.title}>Courses</h1>
+            <div className={styles.grid}>
+              {courses.map((course) => {
+                let courseId = '';
+                if (typeof course.id === 'string') {
+                  const parts = course.id.split(':');
+                  courseId = parts[parts.length - 1].replace(/⟩$/, '');
+                } else {
+                  courseId = String(course.id);
+                }
+                console.log('Rendering course:', course, 'Extracted courseId:', courseId);
+                return (
+                  <div key={courseId} className={styles.card}>
+                    <Link
+                      href={`/courses/${courseId}`}
+                      className={styles.cardLink}
+                    >
+                      <img
+                        src={course.image}
+                        alt={course.title}
+                        className={styles.courseImage}
+                      />
+                      <div className={styles.cardContent}>
+                        <h2 className={styles.cardTitle}>{course.title}</h2>
+                        <p className={styles.description}>{course.description}</p>
+                      </div>
+                    </Link>
+                    {user && user.publicMetadata?.role === 'admin' && (
+                      <div className={styles.buttonContainer}>
+                        <Link href={`/courses/${courseId}/edit`}>
+                          <button className={styles.button}>Update Course</button>
+                        </Link>
+                        <button
+                          onClick={() => handleDeleteCourse(courseId)}
+                          className={styles.deleteButton}
+                        >
+                          Delete Course
+                        </button>
+                      </div>
+                    )}
                   </div>
-                </Link>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </SignedIn>
       <SignedOut>
@@ -380,137 +1353,246 @@ export default function Courses() {
   );
 }
 
-
 app\courses\[courseId]\CourseDetail.module.css
 .container {
-  padding: 2rem;
-  max-width: 1000px;
+  padding: 2.5rem;
+  max-width: 1280px;
   margin: 0 auto;
   min-height: calc(100vh - 80px);
-  background-color: #f5f7fa;
+  background: linear-gradient(180deg, #f5f7fa 0%, #e2e8f0 100%);
   font-family: 'Inter', sans-serif;
 }
 
-.courseHeader {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  margin-bottom: 2rem;
-  text-align: center;
-}
-
-.courseIcon {
-  width: 60px;
-  height: 60px;
-  margin-bottom: 1rem;
-}
-
-.courseImage {
-  width: 100%;
-  max-height: 200px;
-  object-fit: cover;
-  border-radius: 8px;
-  margin-bottom: 1rem;
-}
-
 .title {
-  font-size: 2rem;
-  font-weight: 700;
+  font-size: 2.5rem;
+  font-weight: 800;
   color: #1f2937;
-  margin-bottom: 0.75rem;
+  margin-bottom: 2.5rem;
+  text-align: center;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-.description {
-  font-size: 1.1rem;
-  color: #4b5563;
-  margin-bottom: 1rem;
-}
-
-.subtitle {
-  font-size: 1.8rem;
-  font-weight: 600;
-  color: #1f2937;
-  margin-bottom: 1rem;
-}
-
-.lessonList {
-  list-style: none;
-  padding: 0;
+.grid {
   display: grid;
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 2rem;
+  padding: 0 1rem;
 }
 
-.lessonItem {
+.card {
+  background: white;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
   display: flex;
-  background-color: white;
-  border-radius: 8px;
-  padding: 1rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s ease;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
 }
 
-.lessonItem:hover {
-  transform: translateY(-2px);
+.card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
 }
 
-.lessonThumbnail {
-  width: 120px;
-  height: 80px;
-  object-fit: cover;
-  border-radius: 6px;
-  margin-right: 1rem;
-}
-
-.lessonContent {
-  flex: 1;
-}
-
-.lessonTitle {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: #2d3748;
-  margin-bottom: 0.5rem;
-}
-
-.lessonDescription {
-  font-size: 0.9rem;
-  color: #4a5568;
-  margin-bottom: 0.75rem;
-}
-
-.lessonLink {
-  background-color: #3b82f6;
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
+.cardLink {
+  display: contents;
   text-decoration: none;
-  font-size: 0.9rem;
-  font-weight: 600;
-  transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
-.lessonLink:hover {
-  background-color: #2563eb;
+.image {
+  width: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  aspect-ratio: 16 / 9;
+  transition: transform 0.3s ease;
+}
+
+.image:hover {
   transform: scale(1.05);
 }
 
-.disabledLessonLink {
-  background-color: #a0aec0;
+.cardContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex-grow: 1;
+  padding: 0 0.75rem;
+}
+
+.cardTitle {
+  display: flex;
+  justify-content: center;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 0.75rem;
+  line-height: 1.3;
+}
+
+.description {
+  font-size: 1rem;
+  color: #4b5563;
+  margin-bottom: 1.5rem;
+  flex-grow: 1;
+  line-height: 1.6;
+}
+
+.button {
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
   color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  font-size: 0.9rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-align: center;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.button:hover {
+  background: linear-gradient(90deg, #2563eb, #3b82f6);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.deleteButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(90deg, #dc2626, #f87171);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  border: none;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 1rem;
+  align-self: center;
+}
+
+.deleteButton::before {
+  content: '\1F5D1'; /* Unicode for trash can icon */
+  font-size: 1.1rem;
+}
+
+.deleteButton:hover {
+  background: linear-gradient(90deg, #b91c1c, #dc2626);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.deleteButton:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.disabledButton {
+  background: #a0aec0;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1.1rem;
   font-weight: 600;
   cursor: not-allowed;
+  border: none;
+}
+
+.loading,
+.error,
+.empty {
+  font-size: 1.3rem;
+  color: #4b5563;
+  text-align: center;
+  margin-top: 3rem;
+  font-weight: 500;
+}
+
+.error {
+  color: #dc2626;
+}
+
+.success {
+  color: #16a34a;
+  font-size: 1.2rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  font-weight: 500;
+}
+
+.signInPrompt {
+  text-align: center;
+  margin-top: 3rem;
+  padding: 2rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.signInPrompt h2 {
+  font-size: 1.75rem;
+  color: #1f2937;
+  margin-bottom: 1.5rem;
+  font-weight: 700;
+}
+
+.signInButton {
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  color: white;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  border: none;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.signInButton:hover {
+  background: linear-gradient(90deg, #2563eb, #3b82f6);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 @media (max-width: 768px) {
   .container {
+    padding: 1.5rem;
+  }
+
+  .title {
+    font-size: 2rem;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .card {
     padding: 1rem;
   }
 
-  .courseHeader {
+  .image {
+    height: 180px;
+  }
+
+  .cardTitle {
+    font-size: 1.4rem;
+  }
+
+  .description {
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
     padding: 1rem;
   }
 
@@ -518,17 +1600,365 @@ app\courses\[courseId]\CourseDetail.module.css
     font-size: 1.75rem;
   }
 
-  .lessonItem {
-    flex-direction: column;
-    align-items: center;
+  .image {
+    height: 160px;
   }
 
-  .lessonThumbnail {
-    width: 100%;
-    max-width: 200px;
-    margin-right: 0;
-    margin-bottom: 1rem;
+  .cardTitle {
+    font-size: 1.3rem;
   }
+
+  .description {
+    font-size: 0.9rem;
+  }
+
+  .button,
+  .deleteButton,
+  .signInButton {
+    font-size: 1rem;
+    padding: 0.65rem 1.25rem;
+  }
+}
+.buttonContainer {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.formContainer {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.formGroup label {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.formGroup input,
+.formGroup textarea {
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 1rem;
+  color: #1f2937;
+  width: 100%;
+  transition: border-color 0.2s ease;
+}
+
+.formGroup input:focus,
+.formGroup textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+app\courses\[courseId]\edit\page.tsx
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import styles from '../CourseDetail.module.css';
+import { Course } from '@/types';
+
+export default function CourseEdit() {
+  const router = useRouter();
+  const params = useParams();
+  const [course, setCourse] = useState<Course | null>(null);
+  const [newTitle, setNewTitle] = useState<string>('');
+  const [newDescription, setNewDescription] = useState<string>('');
+  const [newImage, setNewImage] = useState<string>('');
+  const [newIcon, setNewIcon] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!params?.courseId) return;
+
+    const fetchCourse = async () => {
+      try {
+        const res = await fetch(`/api/courses/${params.courseId}`);
+        if (!res.ok) {
+          throw new Error('Failed to fetch course');
+        }
+        const data = await res.json();
+        setCourse(data);
+        setNewTitle(data.title);
+        setNewDescription(data.description);
+        setNewImage(data.image);
+        setNewIcon(data.icon);
+      } catch (err: any) {
+        setError(err.message);
+      }
+    };
+
+    fetchCourse();
+  }, [params?.courseId]);
+
+  const updateCourse = async () => {
+    try {
+      const res = await fetch(`/api/courses/${params.courseId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newTitle,
+          description: newDescription,
+          image: newImage,
+          icon: newIcon,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to update course');
+      }
+
+      setSuccess('Course updated successfully!');
+      setTimeout(() => {
+        setSuccess(null);
+        router.push('/courses');
+      }, 2000);
+    } catch (err: any) {
+      setError(err.message);
+      setTimeout(() => setError(null), 3000);
+    }
+  };
+
+  const goBack = () => {
+    router.push('/courses');
+  };
+
+  if (!course) return <div className={styles.loading}>Loading...</div>;
+
+  return (
+    <div className={styles.container}>
+      <h1 className={styles.title}>Edit Course</h1>
+
+      {error && <div className={styles.error}>{error}</div>}
+      {success && <div className={styles.success}>{success}</div>}
+
+      <div className={styles.formContainer}>
+        <div className={styles.form}>
+          <div className={styles.formGroup}>
+            <label htmlFor="title">Course Title</label>
+            <input
+              type="text"
+              id="title"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              className={styles.input}
+            />
+          </div>
+          <div className={styles.formGroup}>
+            <label htmlFor="description">Description</label>
+            <textarea
+              id="description"
+              value={newDescription}
+              onChange={(e) => setNewDescription(e.target.value)}
+              className={styles.input}
+            />
+          </div>
+          <div className={styles.formGroup}>
+            <label htmlFor="image">Image URL</label>
+            <input
+              type="url"
+              id="image"
+              value={newImage}
+              onChange={(e) => setNewImage(e.target.value)}
+              className={styles.input}
+            />
+          </div>
+          <div className={styles.formGroup}>
+            <label htmlFor="icon">Icon URL</label>
+            <input
+              type="url"
+              id="icon"
+              value={newIcon}
+              onChange={(e) => setNewIcon(e.target.value)}
+              className={styles.input}
+            />
+          </div>
+          <div className={styles.buttonContainer}>
+            <button
+              onClick={updateCourse}
+              disabled={
+                !(typeof newTitle === 'string' && newTitle.trim()) ||
+                !(typeof newDescription === 'string' && newDescription.trim()) ||
+                !(typeof newImage === 'string' && newImage.trim()) ||
+                !(typeof newIcon === 'string' && newIcon.trim())
+              }
+              className={styles.button}
+            >
+              Update Course
+            </button>
+            <button onClick={goBack} className={styles.deleteButton}>
+              Back
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+app\courses\[courseId]\lessons\[lessonId]\edit\page.tsx
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import styles from '@/app/courses/[courseId]/CourseDetail.module.css';
+import { Lesson } from '@/types';
+
+export default function LessonDetail() {
+  const router = useRouter();
+  const params = useParams();
+  const [lesson, setLesson] = useState<Lesson | null>(null);
+  const [newTitle, setNewTitle] = useState<string>('');
+  const [newContent, setNewContent] = useState<string>('');
+  const [newThumbnail, setNewThumbnail] = useState<string>('');
+  const [newVideoEmbed, setNewVideoEmbed] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!params?.courseId || !params?.lessonId) return;
+
+    const fetchLesson = async () => {
+      try {
+        const res = await fetch(`/api/courses/${params.courseId}/lessons/${params.lessonId}`);
+        if (!res.ok) {
+          throw new Error('Failed to fetch lesson');
+        }
+        const data = await res.json();
+        setLesson(data);
+        setNewTitle(data.title);
+        setNewContent(data.content);
+        setNewThumbnail(data.thumbnail);
+        setNewVideoEmbed(data.videoEmbed);
+      } catch (err: any) {
+        setError(err.message);
+      }
+    };
+
+    fetchLesson();
+  }, [params?.courseId, params?.lessonId]);
+
+  const updateLesson = async () => {
+    try {
+      const res = await fetch(`/api/courses/${params.courseId}/lessons/${params.lessonId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newTitle,
+          content: newContent,
+          thumbnail: newThumbnail,
+          videoEmbed: newVideoEmbed,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to update lesson');
+      }
+
+      setSuccess('Lesson updated successfully!');
+      setTimeout(() => {
+        setSuccess(null);
+        router.push(`/courses/${params.courseId}`);
+      }, 2000);
+    } catch (err: any) {
+      setError(err.message);
+      setTimeout(() => setError(null), 3000);
+    }
+  };
+
+  const goBack = () => {
+    router.push(`/courses/${params.courseId}`);
+  };
+
+  if (!lesson) return <div className={styles.loading}>Loading...</div>;
+
+  return (
+    <div className={styles.container}>
+      <h1 className={styles.title}>Lesson Details</h1>
+
+      {error && <div className={styles.error}>{error}</div>}
+      {success && <div className={styles.success}>{success}</div>}
+
+      <div className={styles.formContainer}>
+        <div className={styles.form}>
+          <div className={styles.formGroup}>
+            <label htmlFor="title">Lesson Title</label>
+            <input
+              type="text"
+              id="title"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              className={styles.input}
+            />
+          </div>
+          <div className={styles.formGroup}>
+            <label htmlFor="content">Content</label>
+            <textarea
+              id="content"
+              value={newContent}
+              onChange={(e) => setNewContent(e.target.value)}
+              className={styles.input}
+            />
+          </div>
+          <div className={styles.formGroup}>
+            <label htmlFor="thumbnail">Thumbnail URL</label>
+            <input
+              type="url"
+              id="thumbnail"
+              value={newThumbnail}
+              onChange={(e) => setNewThumbnail(e.target.value)}
+              className={styles.input}
+            />
+          </div>
+          <div className={styles.formGroup}>
+            <label htmlFor="videoEmbed">Video Embed URL</label>
+            <input
+              type="url"
+              id="videoEmbed"
+              value={newVideoEmbed}
+              onChange={(e) => setNewVideoEmbed(e.target.value)}
+              className={styles.input}
+            />
+          </div>
+          <div className={styles.buttonContainer}>
+            <button
+              onClick={updateLesson}
+              disabled={!newTitle.trim() || !newContent.trim() || !newThumbnail.trim() || !newVideoEmbed.trim()}
+              className={styles.button}
+            >
+              Update Lesson
+            </button>
+            <button onClick={goBack} className={styles.deleteButton}>
+              Back
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 app\courses\[courseId]\lessons\[lessonId]\page.tsx
@@ -582,11 +2012,13 @@ export default function LessonDetail({
   if (error) return <div className={styles.container}>Error: {error}</div>;
   if (!course || !lesson) return <div className={styles.container}>Lesson or Course not found</div>;
 
-  const courseId = typeof course.id === 'string' 
-    ? course.id.includes(':') 
-      ? course.id.split(':').pop() || course.id // حذف پیشوند course:
-      : course.id
-    : String(course.id);
+  const courseId = course?.id 
+    ? (typeof course.id === 'string' 
+        ? course.id.includes(':') 
+          ? course.id.split(':').pop() || course.id // حذف پیشوند course:
+          : course.id
+        : String(course.id))
+    : '';
 
   const lessonCourseId = typeof lesson.course === 'string' 
     ? lesson.course.includes(':') 
@@ -630,95 +2062,148 @@ app\courses\[courseId]\page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { SignedIn, SignedOut, SignInButton, useUser } from '@clerk/nextjs';
+import styles from './CourseDetail.module.css';
 import { Course, Lesson } from '@/types';
-import styles from './CourseDetail.module.css'; // از همون فایل استایل قبلی استفاده می‌کنیم
 
-export default function CourseDetail({
-  params,
-}: {
-  params: { courseId: string };
-}) {
-  const courseId = params.courseId;
+export default function CourseDetail() {
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const { user } = useUser();
+  const params = useParams();
 
   useEffect(() => {
-    async function fetchData() {
+    async function fetchCourseAndLessons() {
       try {
-        const courseRes = await fetch(`/api/courses/${courseId}`);
-        if (!courseRes.ok) {
-          const errorData = await courseRes.json();
-          throw new Error(errorData.error || 'Course not found');
+        const courseId = params.courseId;
+        console.log('Fetching course with ID:', courseId);
+
+        const courseResponse = await fetch(`/api/courses/${courseId}`);
+        if (!courseResponse.ok) {
+          throw new Error('Failed to fetch course');
         }
-        const courseData = await courseRes.json();
+        const courseData = await courseResponse.json();
         setCourse(courseData);
 
-        const lessonsRes = await fetch(`/api/courses/${courseId}/lessons`);
-        const lessonsData = await lessonsRes.json();
-
-        if (!Array.isArray(lessonsData)) {
-          throw new Error('Invalid lessons data');
+        const lessonsResponse = await fetch(`/api/courses/${courseId}/lessons`);
+        if (!lessonsResponse.ok) {
+          throw new Error('Failed to fetch lessons');
         }
-
-        setLessons(lessonsData);
+        const lessonsData = await lessonsResponse.json();
+        console.log('Fetched lessons:', lessonsData);
+        setLessons(Array.isArray(lessonsData) ? lessonsData : []);
       } catch (err: any) {
+        setError(err.message);
         console.error('Fetch error:', err);
-        setError(err.message || 'Unknown error');
       } finally {
         setLoading(false);
       }
     }
+    fetchCourseAndLessons();
+  }, [params.courseId]);
 
-    fetchData();
-  }, [courseId]);
+  const handleDeleteLesson = async (lessonId: string) => {
+    if (!confirm('Are you sure you want to delete this lesson?')) {
+      return;
+    }
 
-  if (loading) return <div className={styles.container}>Loading...</div>;
-  if (error) return <div className={styles.container}>Error: {error}</div>;
-  if (!course) return <div className={styles.container}>Course not found</div>;
+    try {
+      const res = await fetch(`/api/courses/${params.courseId}/lessons/${lessonId}/delete`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setSuccess('Lesson deleted successfully');
+        setLessons((prev) => prev.filter((lesson) => {
+          const id = typeof lesson.id === 'string'
+            ? lesson.id.includes(':') ? lesson.id.split(':').pop() : lesson.id
+            : String(lesson.id);
+          return id !== lessonId;
+        }));
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        const errorData = await res.json();
+        setError(errorData.error || 'Failed to delete lesson');
+        setTimeout(() => setError(null), 3000);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete lesson');
+      setTimeout(() => setError(null), 3000);
+    }
+  };
+
+  if (loading) return <div className={styles.loading}>Loading...</div>;
+  if (!course) return <div className={styles.error}>Course not found</div>;
 
   return (
     <div className={styles.container}>
-      <div className={styles.courseHeader}>
-        <img src={course.icon} alt={`${course.title} icon`} className={styles.courseIcon} />
-        <img src={course.image} alt={course.title} className={styles.courseImage} />
+      <SignedIn>
+        {error && <div className={styles.error}>{error}</div>}
+        {success && <div className={styles.success}>{success}</div>}
         <h1 className={styles.title}>{course.title}</h1>
         <p className={styles.description}>{course.description}</p>
-      </div>
-      <h2 className={styles.subtitle}>Lessons</h2>
-      <ul className={styles.lessonList}>
-        {lessons.map((lesson) => {
-          const lessonId = typeof lesson.id === 'string'
-            ? lesson.id.includes(':')
-              ? lesson.id.split(':').pop()?.replace(/[^\w\-]/g, '') || lesson.id
-              : lesson.id
-            : String(lesson.id);
-
-          if (!lessonId) {
-            console.warn('Invalid lesson ID:', lesson.id);
-            return null;
-          }
-
-          return (
-            <li key={String(lesson.id)} className={styles.lessonItem}>
-              <img src={lesson.thumbnail} alt={lesson.title} className={styles.lessonThumbnail} />
-              <div className={styles.lessonContent}>
-                <h3 className={styles.lessonTitle}>{lesson.title}</h3>
-                <p className={styles.lessonDescription}>{lesson.content}</p>
-                <Link href={`/courses/${courseId}/lessons/${lessonId}`} className={styles.lessonLink}>
-                  View Lesson
+        <div className={styles.grid}>
+          {lessons.length === 0 && (
+            <div className={styles.empty}>No lessons available.</div>
+          )}
+          {lessons.map((lesson) => {
+            let lessonId = '';
+            if (typeof lesson.id === 'string') {
+              const parts = lesson.id.split(':');
+              lessonId = parts[parts.length - 1].replace(/⟩$/, '');
+            } else {
+              lessonId = String(lesson.id);
+            }
+            console.log('Rendering lesson:', lesson, 'Extracted lessonId:', lessonId);
+            return (
+              <div key={lessonId} className={styles.card}>
+                <Link
+                  href={`/courses/${params.courseId}/lessons/${lessonId}`}
+                  className={styles.cardLink}
+                >
+                  <img
+                    src={lesson.thumbnail}
+                    alt={lesson.title}
+                    className={styles.image}
+                  />
+                  <div className={styles.cardContent}>
+                    <h2 className={styles.cardTitle}>{lesson.title}</h2>
+                    <p className={styles.description}>{lesson.content}</p>
+                  </div>
                 </Link>
+                {user && user.publicMetadata?.role === 'admin' && (
+                  <div className={styles.buttonContainer}>
+                    <Link href={`/courses/${params.courseId}/lessons/${lessonId}/edit`}>
+                      <button className={styles.button}>Update Lesson</button>
+                    </Link>
+                    <button
+                      onClick={() => handleDeleteLesson(lessonId)}
+                      className={styles.deleteButton}
+                    >
+                      Delete Lesson
+                    </button>
+                  </div>
+                )}
               </div>
-            </li>
-          );
-        })}
-      </ul>
+            );
+          })}
+        </div>
+      </SignedIn>
+      <SignedOut>
+        <div className={styles.signInPrompt}>
+          <h2>Please sign in to view course details</h2>
+          <SignInButton mode="modal">
+            <button className={styles.signInButton}>Sign In</button>
+          </SignInButton>
+        </div>
+      </SignedOut>
     </div>
   );
 }
-
 
 app\globals.css
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -943,10 +2428,40 @@ a.secondary {
 
 
 app\page.tsx
+'use client';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import styles from './styles/Home.module.css';
+import { Course } from '@/types';
 
 export default function Home() {
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchCourses() {
+      try {
+        const response = await fetch('/api/courses?limit=3', {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        if (!response.ok) {
+          throw new Error('Failed to fetch courses');
+        }
+        const data = await response.json();
+        setCourses(Array.isArray(data) ? data : []);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchCourses();
+  }, []);
+
   return (
     <div className={styles.container}>
       <section className={styles.hero}>
@@ -958,20 +2473,28 @@ export default function Home() {
       </section>
       <section className={styles.coursesPreview}>
         <h2>Featured Courses</h2>
-        <div className={styles.courseGrid}>
-          <div className={styles.courseCard}>
-            <h3>Course 1</h3>
-            <p>Learn the basics of programming.</p>
+        {loading && <div className={styles.courseGrid}>Loading...</div>}
+        {error && <div className={styles.courseGrid}>Error: {error}</div>}
+        {!loading && !error && courses.length === 0 && (
+          <div className={styles.courseGrid}>No courses available.</div>
+        )}
+        {!loading && !error && courses.length > 0 && (
+          <div className={styles.courseGrid}>
+            {courses.map((course) => {
+              const courseId = typeof course.id === 'string'
+                ? course.id.includes(':')
+                  ? course.id.split(':').pop()?.replace(/[^\w\-]/g, '') || course.id
+                  : course.id
+                : String(course.id);
+              return (
+                <Link href={`/courses/${courseId}`} key={courseId} className={styles.courseCard}>
+                  <h3>{course.title}</h3>
+                  <p>{course.description}</p>
+                </Link>
+              );
+            })}
           </div>
-          <div className={styles.courseCard}>
-            <h3>Course 2</h3>
-            <p>Master web development.</p>
-          </div>
-          <div className={styles.courseCard}>
-            <h3>Course 3</h3>
-            <p>Dive into data science.</p>
-          </div>
-        </div>
+        )}
       </section>
     </div>
   );
@@ -1188,6 +2711,13 @@ app\styles\Courses.module.css
   color: #e74c3c;
 }
 
+.success {
+  text-align: center;
+  font-size: 1.2rem;
+  margin: 2rem 0;
+  color: #2ecc71;
+}
+
 .signInPrompt {
   text-align: center;
   margin: 2rem 0;
@@ -1211,6 +2741,73 @@ app\styles\Courses.module.css
 
 .signInButton:hover {
   background-color: #3b5bdb;
+}
+
+.form {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.formGroup {
+  margin-bottom: 1.5rem;
+}
+
+.formGroup label {
+  display: block;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #1F2937;
+  margin-bottom: 0.5rem;
+}
+
+.formGroup input,
+.formGroup select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 1rem;
+  color: #1F2937;
+}
+
+.formGroup input:focus,
+.formGroup select:focus {
+  outline: none;
+  border-color: #4C6EF5;
+  box-shadow: 0 0 0 3px rgba(76, 110, 245, 0.1);
+}
+
+.button {
+  background-color: #4C6EF5;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  
+}
+
+.button:hover {
+  background-color: #3b5bdb;
+  transform: scale(1.05);
+}
+
+@media (max-width: 768px) {
+  .form {
+    padding: 1.5rem;
+  }
+
+  .formGroup input,
+  .formGroup select {
+    padding: 0.5rem;
+  }
 }
 
 app\styles\Footer.module.css
@@ -1571,7 +3168,7 @@ app\styles\LessonDetail.module.css
 }
 
 components\AuthButtons.tsx
-"use client";
+'use client';
 
 import { SignInButton, SignedIn, SignedOut, UserButton, SignUpButton, useUser } from '@clerk/nextjs';
 import Link from 'next/link';
@@ -1591,7 +3188,7 @@ export default function AuthButtons() {
           <UserButton afterSignOutUrl="/" />
           {isAdmin && (
             <Link href="/admin">
-              <button className={styles.clerkButton}>Admin Panel</button>
+              <button className={styles.clerkButton}>Create New Lesson</button>
             </Link>
           )}
         </div>
@@ -1915,7 +3512,8 @@ package-lock.json
         "next": "15.3.4",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
-        "surrealdb": "^1.3.2"
+        "surrealdb": "^1.3.2",
+        "uuidv7": "^1.0.2"
       },
       "devDependencies": {
         "@types/node": "^20",
@@ -3213,7 +4811,8 @@ package.json
     "next": "15.3.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "surrealdb": "^1.3.2"
+    "surrealdb": "^1.3.2",
+    "uuidv7": "^1.0.2"
   },
   "devDependencies": {
     "@types/node": "^20",

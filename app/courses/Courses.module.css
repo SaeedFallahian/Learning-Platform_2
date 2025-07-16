@@ -17,69 +17,112 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1.5rem;
 }
 
 .card {
-  background: linear-gradient(145deg, #ffffff, #f8fafc);
+  background: white;
   border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  padding: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
+  overflow: hidden;
 }
 
 .card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
 }
 
-.icon {
-  width: 50px;
-  height: 50px;
-  margin-bottom: 1rem;
+.cardLink {
+  display: contents;
+  text-decoration: none;
 }
 
-.image {
+.courseImage {
   width: 100%;
-  height: 150px;
-  object-fit: cover;
+  object-fit: cover; /* Ensures image fills frame, may crop slightly to avoid distortion */
   border-radius: 8px;
   margin-bottom: 1rem;
+  aspect-ratio: 16 / 9; /* Enforces consistent aspect ratio */
+}
+
+.cardContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex-grow: 1;
+  padding: 0 0.5rem;
 }
 
 .cardTitle {
-  font-size: 1.5rem;
+  font-size: 1.4rem;
   font-weight: 600;
   color: #1f2937;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
 }
 
 .description {
-  font-size: 1rem;
+  font-size: 0.95rem;
   color: #4b5563;
   margin-bottom: 1rem;
   flex-grow: 1;
+  line-height: 1.5;
 }
 
 .button {
-  background-color: #3b82f6;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  margin-top: 12px;
   color: white;
   padding: 0.75rem 1.5rem;
   border-radius: 6px;
   text-decoration: none;
   font-size: 1rem;
   font-weight: 600;
-  transition: background-color 0.3s ease, transform 0.2s ease;
+  text-align: center;
+  transition: all 0.3s ease;
 }
 
 .button:hover {
-  background-color: #2563eb;
+  background: linear-gradient(90deg, #2563eb, #3b82f6);
   transform: scale(1.05);
+}
+
+.deleteButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(90deg, #dc2626, #f87171);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  margin-top: 0.5rem;
+  align-self: center;
+}
+
+.deleteButton::before {
+  content: '\1F5D1'; /* Unicode for trash can icon */
+  font-size: 1rem;
+}
+
+.deleteButton:hover {
+  background: linear-gradient(90deg, #b91c1c, #dc2626);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.deleteButton:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .disabledButton {
@@ -90,6 +133,54 @@
   font-size: 1rem;
   font-weight: 600;
   cursor: not-allowed;
+}
+
+.loading,
+.error,
+.empty {
+  font-size: 1.2rem;
+  color: #4b5563;
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.error {
+  color: #dc2626;
+}
+
+.success {
+  color: #16a34a;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.signInPrompt {
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.signInPrompt h2 {
+  font-size: 1.5rem;
+  color: #1f2937;
+  margin-bottom: 1rem;
+}
+
+.signInButton {
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.signInButton:hover {
+  background: linear-gradient(90deg, #2563eb, #3b82f6);
+  transform: scale(1.05);
 }
 
 @media (max-width: 768px) {
@@ -106,6 +197,30 @@
   }
 
   .card {
-    padding: 1rem;
+    padding: 0.75rem;
   }
+
+  .courseImage {
+    height: 180px; /* Adjusted for smaller screens */
+  }
+}
+
+@media (max-width: 480px) {
+  .courseImage {
+    height: 160px; /* Further adjusted for very small screens */
+  }
+
+  .cardTitle {
+    font-size: 1.2rem;
+  }
+
+  .description {
+    font-size: 0.9rem;
+  }
+}
+.buttonContainer {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
 }

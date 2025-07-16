@@ -48,11 +48,13 @@ export default function LessonDetail({
   if (error) return <div className={styles.container}>Error: {error}</div>;
   if (!course || !lesson) return <div className={styles.container}>Lesson or Course not found</div>;
 
-  const courseId = typeof course.id === 'string' 
-    ? course.id.includes(':') 
-      ? course.id.split(':').pop() || course.id // حذف پیشوند course:
-      : course.id
-    : String(course.id);
+  const courseId = course?.id 
+    ? (typeof course.id === 'string' 
+        ? course.id.includes(':') 
+          ? course.id.split(':').pop() || course.id // حذف پیشوند course:
+          : course.id
+        : String(course.id))
+    : '';
 
   const lessonCourseId = typeof lesson.course === 'string' 
     ? lesson.course.includes(':') 
