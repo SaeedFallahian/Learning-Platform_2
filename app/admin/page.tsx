@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import styles from './AdminPanel.module.css';
 import { Course } from '@/types';
+import { CourseSchema, LessonSchema } from '@/lib/schemas';
+import { z } from 'zod';
 
 export default function AdminPanel() {
   const { user, isLoaded } = useUser();
@@ -27,6 +29,8 @@ export default function AdminPanel() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [activeForm, setActiveForm] = useState<'course' | 'lesson' | null>(null);
+  const [courseFormErrors, setCourseFormErrors] = useState<Record<string, string>>({});
+  const [lessonFormErrors, setLessonFormErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (isLoaded && (!user || user.publicMetadata?.role !== 'admin')) {
@@ -55,6 +59,7 @@ export default function AdminPanel() {
   ) => {
     const { name, value } = e.target;
     setCourseFormData((prev) => ({ ...prev, [name]: value }));
+    setCourseFormErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
   const handleLessonInputChange = (
@@ -62,23 +67,32 @@ export default function AdminPanel() {
   ) => {
     const { name, value } = e.target;
     setLessonFormData((prev) => ({ ...prev, [name]: value }));
+    setLessonFormErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
   const handleCourseSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
+    setCourseFormErrors({});
+
+    const parsedData = CourseSchema.safeParse(courseFormData);
+    if (!parsedData.success) {
+      const errors: Record<string, string> = {};
+      parsedData.error.issues.forEach((issue) => {
+        if (issue.path[0]) {
+          errors[issue.path[0]] = issue.message;
+        }
+      });
+      setCourseFormErrors(errors);
+      return;
+    }
 
     try {
       const response = await fetch('/api/courses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: courseFormData.title,
-          description: courseFormData.description,
-          image: courseFormData.image,
-          icon: courseFormData.icon,
-        }),
+        body: JSON.stringify(parsedData.data),
       });
 
       if (!response.ok) {
@@ -94,14 +108,13 @@ export default function AdminPanel() {
         icon: '',
       });
 
-      // Refresh courses list
       const updatedResponse = await fetch('/api/courses');
       if (updatedResponse.ok) {
         const updatedData = await updatedResponse.json();
         setCourses(Array.isArray(updatedData) ? updatedData : []);
       }
 
-      setActiveForm(null); // Hide form after submission
+      setActiveForm(null);
     } catch (err: any) {
       setError(err.message);
     }
@@ -111,16 +124,29 @@ export default function AdminPanel() {
     e.preventDefault();
     setError(null);
     setSuccess(null);
+    setLessonFormErrors({});
+
+    const parsedData = LessonSchema.safeParse(lessonFormData);
+    if (!parsedData.success) {
+      const errors: Record<string, string> = {};
+      parsedData.error.issues.forEach((issue) => {
+        if (issue.path[0]) {
+          errors[issue.path[0]] = issue.message;
+        }
+      });
+      setLessonFormErrors(errors);
+      return;
+    }
 
     try {
       const response = await fetch(`/api/courses/${lessonFormData.courseId}/lessons`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: lessonFormData.title,
-          content: lessonFormData.content,
-          thumbnail: lessonFormData.thumbnail,
-          videoEmbed: lessonFormData.videoEmbed,
+          title: parsedData.data.title,
+          content: parsedData.data.content,
+          thumbnail: parsedData.data.thumbnail,
+          videoEmbed: parsedData.data.videoEmbed,
         }),
       });
 
@@ -138,7 +164,7 @@ export default function AdminPanel() {
         videoEmbed: '',
       });
 
-      setActiveForm(null); // Hide form after submission
+      setActiveForm(null);
     } catch (err: any) {
       setError(err.message);
     }
@@ -151,7 +177,6 @@ export default function AdminPanel() {
     <div className={styles.container}>
       <h1 className={styles.title}>Admin Panel</h1>
 
-      {/* Action Buttons */}
       <div className={styles.actionButtons}>
         <button
           className={`${styles.actionButton} ${activeForm === 'course' ? styles.activeButton : ''}`}
@@ -167,11 +192,9 @@ export default function AdminPanel() {
         </button>
       </div>
 
-      {/* Error and Success Messages */}
       {error && <div className={styles.error}>{error}</div>}
       {success && <div className={styles.success}>{success}</div>}
 
-      {/* Course Creation Form */}
       {activeForm === 'course' && (
         <div className={styles.formContainer}>
           <h2 className={styles.subtitle}>Create New Course</h2>
@@ -186,6 +209,9 @@ export default function AdminPanel() {
                 onChange={handleCourseInputChange}
                 required
               />
+              {courseFormErrors.title && (
+                <span className={styles.error}>{courseFormErrors.title}</span>
+              )}
             </div>
             <div className={styles.formGroup}>
               <label htmlFor="description">Description</label>
@@ -197,6 +223,9 @@ export default function AdminPanel() {
                 onChange={handleCourseInputChange}
                 required
               />
+              {courseFormErrors.description && (
+                <span className={styles.error}>{courseFormErrors.description}</span>
+              )}
             </div>
             <div className={styles.formGroup}>
               <label htmlFor="image">Image URL</label>
@@ -208,8 +237,24 @@ export default function AdminPanel() {
                 onChange={handleCourseInputChange}
                 required
               />
+              {courseFormErrors.image && (
+                <span className={styles.error}>{courseFormErrors.image}</span>
+              )}
             </div>
-
+            <div className={styles.formGroup}>
+              <label htmlFor="icon">Icon URL</label>
+              <input
+                type="url"
+                id="icon"
+                name="icon"
+                value={courseFormData.icon}
+                onChange={handleCourseInputChange}
+                required
+              />
+              {courseFormErrors.icon && (
+                <span className={styles.error}>{courseFormErrors.icon}</span>
+              )}
+            </div>
             <button type="submit" className={styles.button}>
               Create Course
             </button>
@@ -217,7 +262,6 @@ export default function AdminPanel() {
         </div>
       )}
 
-      {/* Lesson Creation Form */}
       {activeForm === 'lesson' && (
         <div className={styles.formContainer}>
           <h2 className={styles.subtitle}>Create New Lesson</h2>
@@ -244,6 +288,9 @@ export default function AdminPanel() {
                   );
                 })}
               </select>
+              {lessonFormErrors.courseId && (
+                <span className={styles.error}>{lessonFormErrors.courseId}</span>
+              )}
             </div>
             <div className={styles.formGroup}>
               <label htmlFor="title">Lesson Title</label>
@@ -255,6 +302,9 @@ export default function AdminPanel() {
                 onChange={handleLessonInputChange}
                 required
               />
+              {lessonFormErrors.title && (
+                <span className={styles.error}>{lessonFormErrors.title}</span>
+              )}
             </div>
             <div className={styles.formGroup}>
               <label htmlFor="content">Lesson Content</label>
@@ -266,6 +316,9 @@ export default function AdminPanel() {
                 onChange={handleLessonInputChange}
                 required
               />
+              {lessonFormErrors.content && (
+                <span className={styles.error}>{lessonFormErrors.content}</span>
+              )}
             </div>
             <div className={styles.formGroup}>
               <label htmlFor="thumbnail">Thumbnail URL</label>
@@ -277,6 +330,9 @@ export default function AdminPanel() {
                 onChange={handleLessonInputChange}
                 required
               />
+              {lessonFormErrors.thumbnail && (
+                <span className={styles.error}>{lessonFormErrors.thumbnail}</span>
+              )}
             </div>
             <div className={styles.formGroup}>
               <label htmlFor="videoEmbed">Video Embed URL</label>
@@ -288,6 +344,9 @@ export default function AdminPanel() {
                 onChange={handleLessonInputChange}
                 required
               />
+              {lessonFormErrors.videoEmbed && (
+                <span className={styles.error}>{lessonFormErrors.videoEmbed}</span>
+              )}
             </div>
             <button type="submit" className={styles.button}>
               Create Lesson

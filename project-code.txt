@@ -536,84 +536,82 @@ export async function POST(req: Request) {
 }
 
 app\api\courses\[courseId]\delete\route.ts
-import { NextResponse } from 'next/server';
-import { currentUser } from '@clerk/nextjs/server';
-import db, { connectDB } from '@/lib/surrealdb';
-import { RecordId } from 'surrealdb';
-import { Course, Lesson } from '@/types';
+import { NextResponse } from 'next/server'
+import { currentUser } from '@clerk/nextjs/server'
+import db, { connectDB } from '@/lib/surrealdb'
+import { RecordId } from 'surrealdb'
+import { Course, Lesson } from '@/types'
 
-export async function DELETE(
-  req: Request,
-  { params }: { params: Promise<{ courseId: string }> }
-) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ courseId: string }> }) {
   try {
-    console.log('Starting DELETE request for course');
-    const user = await currentUser();
+    console.log('Starting DELETE request for course')
+    const user = await currentUser()
     if (!user) {
-      console.log('User not authenticated');
-      return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+      console.log('User not authenticated')
+      return NextResponse.json({ error: 'User not authenticated' }, { status: 401 })
     }
-    console.log('User authenticated:', user.id);
+    console.log('User authenticated:', user.id)
 
     // Check if user is admin
-    const isAdmin = user.publicMetadata?.role === 'admin';
+    const isAdmin = user.publicMetadata?.role === 'admin'
     if (!isAdmin) {
-      console.log('Unauthorized: User is not admin, role:', user.publicMetadata?.role);
-      return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 403 });
+      console.log('Unauthorized: User is not admin, role:', user.publicMetadata?.role)
+      return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 403 })
     }
 
-    const { courseId } = await params;
+    const { courseId } = await params
     if (!courseId || courseId === 'undefined') {
-      console.log('Invalid course ID');
-      return NextResponse.json({ error: 'Course ID is required' }, { status: 400 });
+      console.log('Invalid course ID')
+      return NextResponse.json({ error: 'Course ID is required' }, { status: 400 })
     }
 
-    await connectDB();
-    const courseIdRecord = new RecordId('courses', courseId);
-    console.log('DELETE Course ID =>', courseId);
-    console.log('RECORD ID =>', courseIdRecord);
+    await connectDB()
+    const courseIdRecord = new RecordId('courses', courseId)
+    console.log('DELETE Course ID =>', courseId)
+    console.log('RECORD ID =>', courseIdRecord)
 
     // Check if course exists
-    const course = await db.select<Course>(courseIdRecord);
+    const course = await db.select<Course>(courseIdRecord)
     if (!course) {
-      console.log(`Course not found: ${courseIdRecord}`);
-      return NextResponse.json({ error: 'Course not found' }, { status: 404 });
+      console.log(`Course not found: ${courseIdRecord}`)
+      return NextResponse.json({ error: 'Course not found' }, { status: 404 })
     }
-    console.log('Course found:', course);
+    console.log('Course found:', course)
 
     // Check for associated lessons
     const lessons = await db.query<Lesson[]>(`SELECT * FROM lessons WHERE course = $courseId`, {
       courseId: `courses:${courseId}`,
-    });
-    let lessonCount = 0;
-    if (Array.isArray(lessons)) {
-      lessonCount = Array.isArray(lessons[0]) ? lessons[0].length : lessons.length;
-    } else if (Array.isArray((lessons[0] as any)?.result)) {
-      lessonCount = (lessons[0] as { result: Lesson[] }).result.length;
-    }
+    })
+    let lessonCount = 0
+    // if (Array.isArray(lessons)) {
+    //   lessonCount = Array.isArray(lessons[0]) ? lessons[0].length : lessons.length;
+    // } else if (Array.isArray((lessons[0] as any)?.result)) {
+    //   lessonCount = (lessons[0] as { result: Lesson[] }).result.length;
+    // }
 
-    if (lessonCount > 0) {
-      console.log(`Cannot delete course ${courseId}: ${lessonCount} lessons associated`);
-      return NextResponse.json(
-        { error: 'Cannot delete course with associated lessons' },
-        { status: 400 }
-      );
-    }
+    // if (lessonCount > 0) {
+    //   console.log(`Cannot delete course ${courseId}: ${lessonCount} lessons associated`);
+    //   return NextResponse.json(
+    //     { error: 'Cannot delete course with associated lessons' },
+    //     { status: 400 }
+    //   );
+    // }
 
-    console.log(`Before deleting course: ${courseIdRecord}`);
-    await db.delete(courseIdRecord);
-    console.log('DELETE RESULT =>', 'Course deleted');
+    console.log(`Before deleting course: ${courseIdRecord}`)
+    await db.delete(courseIdRecord)
+    console.log('DELETE RESULT =>', 'Course deleted')
 
-    console.log(`Course deleted: ${courseIdRecord}`);
-    return NextResponse.json({ message: 'Course deleted successfully' }, { status: 200 });
+    console.log(`Course deleted: ${courseIdRecord}`)
+    return NextResponse.json({ message: 'Course deleted successfully' }, { status: 200 })
   } catch (error: any) {
-    console.error('DELETE ERROR =>', error.message);
+    console.error('DELETE ERROR =>', error.message)
     return NextResponse.json(
       { error: 'Failed to delete course', details: error.message },
       { status: 500 }
-    );
+    )
   }
 }
+
 
 app\api\courses\[courseId]\lessons\route.ts
 import { NextResponse } from 'next/server';
@@ -712,111 +710,112 @@ export async function POST(
 }
 
 app\api\courses\[courseId]\lessons\[lessonId]\delete\route.ts
-import { NextResponse } from 'next/server';
-import { currentUser } from '@clerk/nextjs/server';
-import db, { connectDB } from '@/lib/surrealdb';
-import { RecordId } from 'surrealdb';
-import { Lesson } from '@/types';
+import { NextResponse } from 'next/server'
+import { currentUser } from '@clerk/nextjs/server'
+import db, { connectDB } from '@/lib/surrealdb'
+import { RecordId } from 'surrealdb'
+import { Lesson } from '@/types'
 
 export async function DELETE(
   req: Request,
   { params }: { params: Promise<{ courseId: string; lessonId: string }> }
 ) {
   try {
-    console.log('Starting DELETE request for lesson');
-    const user = await currentUser();
+    console.log('Starting DELETE request for lesson')
+    const user = await currentUser()
     if (!user) {
-      console.log('User not authenticated');
-      return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+      console.log('User not authenticated')
+      return NextResponse.json({ error: 'User not authenticated' }, { status: 401 })
     }
-    console.log('User authenticated:', user.id);
+    console.log('User authenticated:', user.id)
 
     // Check if user is admin
-    const isAdmin = user.publicMetadata?.role === 'admin';
+    const isAdmin = user.publicMetadata?.role === 'admin'
     if (!isAdmin) {
-      console.log('Unauthorized: User is not admin, role:', user.publicMetadata?.role);
-      return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 403 });
+      console.log('Unauthorized: User is not admin, role:', user.publicMetadata?.role)
+      return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 403 })
     }
 
-    const { courseId, lessonId } = await params;
+    const { courseId, lessonId } = await params
     if (!courseId || courseId === 'undefined' || !lessonId || lessonId === 'undefined') {
-      console.log('Invalid course or lesson ID');
-      return NextResponse.json({ error: 'Course ID and Lesson ID are required' }, { status: 400 });
+      console.log('Invalid course or lesson ID')
+      return NextResponse.json({ error: 'Course ID and Lesson ID are required' }, { status: 400 })
     }
 
-    await connectDB();
-    const lessonIdRecord = new RecordId('lessons', lessonId);
-    console.log('DELETE Lesson ID =>', lessonId);
-    console.log('RECORD ID =>', lessonIdRecord);
+    await connectDB()
+    const lessonIdRecord = new RecordId('lessons', lessonId)
+    console.log('DELETE Lesson ID =>', lessonId)
+    console.log('RECORD ID =>', lessonIdRecord)
 
-    const lesson = await db.select<Lesson>(lessonIdRecord);
+    const lesson = await db.select<Lesson>(lessonIdRecord)
     if (!lesson) {
-      console.log(`Lesson not found: ${lessonIdRecord}`);
-      return NextResponse.json({ error: 'Lesson not found' }, { status: 404 });
+      console.log(`Lesson not found: ${lessonIdRecord}`)
+      return NextResponse.json({ error: 'Lesson not found' }, { status: 404 })
     }
-    console.log('Lesson found:', lesson);
+    console.log('Lesson found:', lesson)
 
-    console.log(`Before deleting lesson: ${lessonIdRecord}`);
-    await db.delete(lessonIdRecord);
-    console.log('DELETE RESULT =>', 'Lesson deleted');
+    console.log(`Before deleting lesson: ${lessonIdRecord}`)
+    await db.delete(lessonIdRecord)
+    console.log('DELETE RESULT =>', 'Lesson deleted')
 
-    console.log(`Lesson deleted: ${lessonIdRecord}`);
-    return NextResponse.json({ message: 'Lesson deleted successfully' }, { status: 200 });
+    console.log(`Lesson deleted: ${lessonIdRecord}`)
+    return NextResponse.json({ message: 'Lesson deleted successfully' }, { status: 200 })
   } catch (error: any) {
-    console.error('DELETE ERROR =>', error.message);
+    console.error('DELETE ERROR =>', error.message)
     return NextResponse.json(
       { error: 'Failed to delete lesson', details: error.message },
       { status: 500 }
-    );
+    )
   }
 }
 
+
 app\api\courses\[courseId]\lessons\[lessonId]\route.ts
-import { NextResponse } from 'next/server';
-import db, { connectDB } from '@/lib/surrealdb';
-import { RecordId, Patch } from 'surrealdb';
-import { Lesson } from '@/types';
-import { currentUser } from '@clerk/nextjs/server';
+import { NextResponse } from 'next/server'
+import db, { connectDB } from '@/lib/surrealdb'
+import { RecordId, Patch } from 'surrealdb'
+import { Lesson } from '@/types'
+import { currentUser } from '@clerk/nextjs/server'
 
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ courseId: string; lessonId: string }> }
 ) {
   try {
-    const { courseId, lessonId } = await params;
-    console.log('Requested courseId:', courseId, 'lessonId:', lessonId);
+    const { courseId, lessonId } = await params
+    console.log('Requested courseId:', courseId, 'lessonId:', lessonId)
 
     if (!courseId || courseId === 'undefined' || !lessonId || lessonId === 'undefined') {
-      return NextResponse.json({ error: 'Course ID and Lesson ID are required' }, { status: 400 });
+      return NextResponse.json({ error: 'Course ID and Lesson ID are required' }, { status: 400 })
     }
 
-    await connectDB();
-    const lessonIdRecord = new RecordId('lessons', lessonId);
-    console.log('Constructed lesson RecordId:', lessonIdRecord.toString());
+    await connectDB()
+    const lessonIdRecord = new RecordId('lessons', lessonId)
+    console.log('Constructed lesson RecordId:', lessonIdRecord.toString())
 
-    const lesson = await db.select<Lesson>(lessonIdRecord);
-    console.log('Selected lesson:', lesson);
+    const lesson = await db.select<Lesson>(lessonIdRecord)
+    console.log('Selected lesson:', lesson)
 
     if (!lesson) {
-      return NextResponse.json({ error: 'Lesson not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Lesson not found' }, { status: 404 })
     }
 
-    let lessonCourseId: string;
+    let lessonCourseId: string
     if (typeof lesson.course === 'string') {
-      lessonCourseId = lesson.course.includes(':') ? lesson.course.split(':').pop()! : lesson.course;
+      lessonCourseId = lesson.course.includes(':') ? lesson.course.split(':').pop()! : lesson.course
     } else if (typeof lesson.course === 'object' && 'id' in lesson.course) {
-      lessonCourseId = lesson.course.id;
+      lessonCourseId = lesson.course.id
     } else {
-      return NextResponse.json({ error: 'Invalid course reference' }, { status: 500 });
+      return NextResponse.json({ error: 'Invalid course reference' }, { status: 500 })
     }
 
-    return NextResponse.json(lesson, { status: 200 });
+    return NextResponse.json(lesson, { status: 200 })
   } catch (error: any) {
-    console.error('Error fetching lesson:', error.message);
+    console.error('Error fetching lesson:', error.message)
     return NextResponse.json(
       { error: 'Failed to fetch lesson', details: error.message },
       { status: 500 }
-    );
+    )
   }
 }
 
@@ -825,38 +824,38 @@ export async function PUT(
   { params }: { params: Promise<{ courseId: string; lessonId: string }> }
 ) {
   try {
-    const user = await currentUser();
+    const user = await currentUser()
     if (!user) {
-      console.log('User not authenticated');
-      return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+      console.log('User not authenticated')
+      return NextResponse.json({ error: 'User not authenticated' }, { status: 401 })
     }
 
-    const isAdmin = user.publicMetadata?.role === 'admin';
+    const isAdmin = user.publicMetadata?.role === 'admin'
     if (!isAdmin) {
-      console.log('Unauthorized: User is not admin, role:', user.publicMetadata?.role);
-      return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 403 });
+      console.log('Unauthorized: User is not admin, role:', user.publicMetadata?.role)
+      return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 403 })
     }
 
-    const { courseId, lessonId } = await params;
+    const { courseId, lessonId } = await params
     if (!courseId || courseId === 'undefined' || !lessonId || lessonId === 'undefined') {
-      return NextResponse.json({ error: 'Course ID and Lesson ID are required' }, { status: 400 });
+      return NextResponse.json({ error: 'Course ID and Lesson ID are required' }, { status: 400 })
     }
 
-    const { title, content, thumbnail, videoEmbed } = await req.json();
+    const { title, content, thumbnail, videoEmbed } = await req.json()
     if (!title || !content || !thumbnail || !videoEmbed) {
       return NextResponse.json(
         { error: 'Title, content, thumbnail, and video embed are required' },
         { status: 400 }
-      );
+      )
     }
 
-    await connectDB();
-    const lessonIdRecord = new RecordId('lessons', lessonId);
+    await connectDB()
+    const lessonIdRecord = new RecordId('lessons', lessonId)
 
-    const existingLesson = await db.select<Lesson>(lessonIdRecord);
+    const existingLesson = await db.select<Lesson>(lessonIdRecord)
     if (!existingLesson) {
-      console.log(`Lesson not found: ${lessonIdRecord}`);
-      return NextResponse.json({ error: 'Lesson not found' }, { status: 404 });
+      console.log(`Lesson not found: ${lessonIdRecord}`)
+      return NextResponse.json({ error: 'Lesson not found' }, { status: 404 })
     }
 
     const patchData: Patch[] = [
@@ -864,20 +863,21 @@ export async function PUT(
       { op: 'replace', path: '/content', value: content },
       { op: 'replace', path: '/thumbnail', value: thumbnail },
       { op: 'replace', path: '/videoEmbed', value: videoEmbed },
-    ];
+    ]
 
-    const updatedLesson = await db.patch(lessonIdRecord, patchData);
-    console.log('Updated lesson:', updatedLesson);
+    const updatedLesson = await db.patch(lessonIdRecord, patchData)
+    console.log('Updated lesson:', updatedLesson)
 
-    return NextResponse.json(updatedLesson, { status: 200 });
+    return NextResponse.json(updatedLesson, { status: 200 })
   } catch (error: any) {
-    console.error('Error updating lesson:', error.message);
+    console.error('Error updating lesson:', error.message)
     return NextResponse.json(
       { error: 'Failed to update lesson', details: error.message },
       { status: 500 }
-    );
+    )
   }
 }
+
 
 app\api\courses\[courseId]\route.ts
 import { NextResponse } from 'next/server';
@@ -1063,6 +1063,7 @@ app\courses\Courses.module.css
 
 .button {
   background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  margin-top: 12px;
   color: white;
   padding: 0.75rem 1.5rem;
   border-radius: 6px;
@@ -1212,20 +1213,20 @@ app\courses\Courses.module.css
 }
 
 app\courses\page.tsx
-'use client';
+'use client'
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { SignedIn, SignedOut, SignInButton, useUser } from '@clerk/nextjs';
-import styles from './Courses.module.css';
-import { Course } from '@/types';
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { SignedIn, SignedOut, SignInButton, useUser } from '@clerk/nextjs'
+import styles from './Courses.module.css'
+import { Course } from '@/types'
 
 export default function Courses() {
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const { user } = useUser();
+  const [courses, setCourses] = useState<Course[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const { user } = useUser()
 
   useEffect(() => {
     async function fetchCourses() {
@@ -1234,54 +1235,59 @@ export default function Courses() {
           headers: {
             'Content-Type': 'application/json',
           },
-        });
-        console.log('Fetch response status:', response.status);
+        })
+        console.log('Fetch response status:', response.status)
         if (!response.ok) {
-          throw new Error('Failed to fetch courses');
+          throw new Error('Failed to fetch courses')
         }
-        const data = await response.json();
-        console.log('Fetched courses:', data);
+        const data = await response.json()
+        console.log('Fetched courses:', data)
 
-        const coursesArray = Array.isArray(data) ? data : [];
-        setCourses(coursesArray);
+        const coursesArray = Array.isArray(data) ? data : []
+        setCourses(coursesArray)
       } catch (err: any) {
-        setError(err.message);
-        console.error('Fetch error:', err);
+        setError(err.message)
+        console.error('Fetch error:', err)
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
     }
-    fetchCourses();
-  }, []);
+    fetchCourses()
+  }, [])
 
   const handleDeleteCourse = async (courseId: string) => {
     if (!confirm('Are you sure you want to delete this course?')) {
-      return;
+      return
     }
 
     try {
       const res = await fetch(`/api/courses/${courseId}/delete`, {
         method: 'DELETE',
-      });
+      })
       if (res.ok) {
-        setSuccess('Course deleted successfully');
-        setCourses((prev) => prev.filter((course) => {
-          const id = typeof course.id === 'string'
-            ? course.id.includes(':') ? course.id.split(':').pop() : course.id
-            : String(course.id);
-          return id !== courseId;
-        }));
-        setTimeout(() => setSuccess(null), 3000);
+        setSuccess('Course deleted successfully')
+        setCourses((prev) =>
+          prev.filter((course) => {
+            const id =
+              typeof course.id === 'string'
+                ? course.id.includes(':')
+                  ? course.id.split(':').pop()
+                  : course.id
+                : String(course.id)
+            return id !== courseId
+          })
+        )
+        setTimeout(() => setSuccess(null), 3000)
       } else {
-        const errorData = await res.json();
-        setError(errorData.error || 'Failed to delete course');
-        setTimeout(() => setError(null), 3000);
+        const errorData = await res.json()
+        setError(errorData.error || 'Failed to delete course')
+        setTimeout(() => setError(null), 3000)
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to delete course');
-      setTimeout(() => setError(null), 3000);
+      setError(err.message || 'Failed to delete course')
+      setTimeout(() => setError(null), 3000)
     }
-  };
+  }
 
   return (
     <div className={styles.container}>
@@ -1297,25 +1303,18 @@ export default function Courses() {
             <h1 className={styles.title}>Courses</h1>
             <div className={styles.grid}>
               {courses.map((course) => {
-                let courseId = '';
+                let courseId = ''
                 if (typeof course.id === 'string') {
-                  const parts = course.id.split(':');
-                  courseId = parts[parts.length - 1].replace(/⟩$/, '');
+                  const parts = course.id.split(':')
+                  courseId = parts[parts.length - 1].replace(/⟩$/, '')
                 } else {
-                  courseId = String(course.id);
+                  courseId = String(course.id)
                 }
-                console.log('Rendering course:', course, 'Extracted courseId:', courseId);
+                console.log('Rendering course:', course, 'Extracted courseId:', courseId)
                 return (
                   <div key={courseId} className={styles.card}>
-                    <Link
-                      href={`/courses/${courseId}`}
-                      className={styles.cardLink}
-                    >
-                      <img
-                        src={course.image}
-                        alt={course.title}
-                        className={styles.courseImage}
-                      />
+                    <Link href={`/courses/${courseId}`} className={styles.cardLink}>
+                      <img src={course.image} alt={course.title} className={styles.courseImage} />
                       <div className={styles.cardContent}>
                         <h2 className={styles.cardTitle}>{course.title}</h2>
                         <p className={styles.description}>{course.description}</p>
@@ -1323,8 +1322,8 @@ export default function Courses() {
                     </Link>
                     {user && user.publicMetadata?.role === 'admin' && (
                       <div className={styles.buttonContainer}>
-                        <Link href={`/courses/${courseId}/edit`}>
-                          <button className={styles.button}>Update Course</button>
+                        <Link href={`/courses/${courseId}/edit`} className={styles.button}>
+                          Update Course
                         </Link>
                         <button
                           onClick={() => handleDeleteCourse(courseId)}
@@ -1335,7 +1334,7 @@ export default function Courses() {
                       </div>
                     )}
                   </div>
-                );
+                )
               })}
             </div>
           </>
@@ -1350,8 +1349,9 @@ export default function Courses() {
         </div>
       </SignedOut>
     </div>
-  );
+  )
 }
+
 
 app\courses\[courseId]\CourseDetail.module.css
 .container {
@@ -1473,7 +1473,6 @@ app\courses\[courseId]\CourseDetail.module.css
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  margin-top: 1rem;
   align-self: center;
 }
 
@@ -1671,46 +1670,46 @@ app\courses\[courseId]\CourseDetail.module.css
 }
 
 app\courses\[courseId]\edit\page.tsx
-'use client';
+'use client'
 
-import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import styles from '../CourseDetail.module.css';
-import { Course } from '@/types';
+import { useEffect, useState } from 'react'
+import { useRouter, useParams } from 'next/navigation'
+import styles from '../CourseDetail.module.css'
+import { Course } from '@/types'
 
 export default function CourseEdit() {
-  const router = useRouter();
-  const params = useParams();
-  const [course, setCourse] = useState<Course | null>(null);
-  const [newTitle, setNewTitle] = useState<string>('');
-  const [newDescription, setNewDescription] = useState<string>('');
-  const [newImage, setNewImage] = useState<string>('');
-  const [newIcon, setNewIcon] = useState<string>('');
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const router = useRouter()
+  const params = useParams()
+  const [course, setCourse] = useState<Course | null>(null)
+  const [newTitle, setNewTitle] = useState<string>('')
+  const [newDescription, setNewDescription] = useState<string>('')
+  const [newImage, setNewImage] = useState<string>('')
+  const [newIcon, setNewIcon] = useState<string>('')
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!params?.courseId) return;
+    if (!params?.courseId) return
 
     const fetchCourse = async () => {
       try {
-        const res = await fetch(`/api/courses/${params.courseId}`);
+        const res = await fetch(`/api/courses/${params.courseId}`)
         if (!res.ok) {
-          throw new Error('Failed to fetch course');
+          throw new Error('Failed to fetch course')
         }
-        const data = await res.json();
-        setCourse(data);
-        setNewTitle(data.title);
-        setNewDescription(data.description);
-        setNewImage(data.image);
-        setNewIcon(data.icon);
+        const data = await res.json()
+        setCourse(data)
+        setNewTitle(data.title)
+        setNewDescription(data.description)
+        setNewImage(data.image)
+        setNewIcon(data.icon)
       } catch (err: any) {
-        setError(err.message);
+        setError(err.message)
       }
-    };
+    }
 
-    fetchCourse();
-  }, [params?.courseId]);
+    fetchCourse()
+  }, [params?.courseId])
 
   const updateCourse = async () => {
     try {
@@ -1723,29 +1722,29 @@ export default function CourseEdit() {
           image: newImage,
           icon: newIcon,
         }),
-      });
+      })
 
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Failed to update course');
+        const errorData = await res.json()
+        throw new Error(errorData.error || 'Failed to update course')
       }
 
-      setSuccess('Course updated successfully!');
+      setSuccess('Course updated successfully!')
       setTimeout(() => {
-        setSuccess(null);
-        router.push('/courses');
-      }, 2000);
+        setSuccess(null)
+        router.push('/courses')
+      }, 2000)
     } catch (err: any) {
-      setError(err.message);
-      setTimeout(() => setError(null), 3000);
+      setError(err.message)
+      setTimeout(() => setError(null), 3000)
     }
-  };
+  }
 
   const goBack = () => {
-    router.push('/courses');
-  };
+    router.push('/courses')
+  }
 
-  if (!course) return <div className={styles.loading}>Loading...</div>;
+  if (!course) return <div className={styles.loading}>Loading...</div>
 
   return (
     <div className={styles.container}>
@@ -1815,8 +1814,9 @@ export default function CourseEdit() {
         </div>
       </div>
     </div>
-  );
+  )
 }
+
 
 app\courses\[courseId]\lessons\[lessonId]\edit\page.tsx
 'use client';
@@ -2224,6 +2224,11 @@ body {
 a {
   text-decoration: none;
   color: inherit;
+}
+button:focus,
+a:focus {
+  outline: none;
+  border: none;
 }
 
 app\layout.tsx
